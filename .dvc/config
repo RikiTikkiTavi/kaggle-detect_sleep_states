@@ -1,0 +1,4 @@
+[core]
+    remote = taurus-sleep_states-ws
+['remote "taurus-sleep_states-ws"']
+    url = ssh://s4610340@taurus.hrsk.tu-dresden.de/beegfs/ws/0/s4610340-sleep_states/dvc_data

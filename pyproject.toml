@@ -11,6 +11,7 @@ python = "^3.10,<3.13"
 pandas = "^2.1.2"
 pyarrow = "^14.0.0"
 dvc = "^3.28.0"
+dvc-ssh = "^2.22.2"
 
 [tool.poetry.group.interactive.dependencies]
 ipykernel = "^6.26.0"
