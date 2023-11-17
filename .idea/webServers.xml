@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="a60fb384-be38-444c-964c-ffb3c76420ac" name="ws-detect_sleep_states">
+        <fileTransfer rootFolder="/beegfs/ws/0/s4610340-sleep_states" accessType="SFTP" host="taurus.hrsk.tu-dresden.de" port="22" sshConfigId="cbbcb738-5930-4fe2-a952-1b50f7a0de32" sshConfig="s4610340@taurus.hrsk.tu-dresden.de:22 key" keyPair="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

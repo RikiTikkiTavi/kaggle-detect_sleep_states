@@ -1,0 +1,5 @@
+data_dir: /beegfs/ws/0/s4610340-sleep_states/kaggle-detect_sleep_states/data/raw
+processed_dir: /beegfs/ws/0/s4610340-sleep_states/kaggle-detect_sleep_states/data/processed
+output_dir: /beegfs/ws/0/s4610340-sleep_states/kaggle-detect_sleep_states/logs
+model_dir: /beegfs/ws/0/s4610340-sleep_states/kaggle-detect_sleep_states/models
+sub_dir: ./
