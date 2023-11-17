@@ -22,7 +22,7 @@ logging.basicConfig(
 _logger = logging.getLogger(__file__)
 
 
-@hydra.main(config_path="config", config_name="train", version_base="1.2")
+@hydra.main(config_path="../../config", config_name="train", version_base="1.2")
 def main(cfg: TrainConfig):
     seed_everything(cfg.seed)
 

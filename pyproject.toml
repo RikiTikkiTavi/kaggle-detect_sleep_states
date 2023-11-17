@@ -23,6 +23,7 @@ transformers = "^4.35.2"
 polars = "^0.19.14"
 torchvision = "^0.16.1"
 segmentation-models-pytorch = "^0.3.3"
+torchaudio = "^2.1.1"
 
 [tool.poetry.group.interactive.dependencies]
 ipykernel = "^6.26.0"

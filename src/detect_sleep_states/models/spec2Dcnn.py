@@ -5,9 +5,9 @@ import torch
 import torch.nn as nn
 from torchvision.transforms.functional import resize
 
-from src.augmentation.cutmix import Cutmix
-from src.augmentation.mixup import Mixup
-from src.models.base import BaseModel
+from detect_sleep_states.augmentation.cutmix import Cutmix
+from detect_sleep_states.augmentation.mixup import Mixup
+from detect_sleep_states.models.base import BaseModel
 
 
 class Spec2DCNN(BaseModel):

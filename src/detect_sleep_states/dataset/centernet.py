@@ -7,8 +7,8 @@ import torch
 from torch.utils.data import Dataset
 from torchvision.transforms.functional import resize
 
-from src.conf import InferenceConfig, TrainConfig
-from src.utils.common import (
+from detect_sleep_states.config import InferenceConfig, TrainConfig
+from detect_sleep_states.utils.common import (
     gaussian_label,
     nearest_valid_size,
     negative_sampling,
@@ -23,10 +23,8 @@ from src.utils.common import (
 def get_centernet_label(
     this_event_df: pd.DataFrame, num_frames: int, duration: int, start: int, end: int
 ) -> np.ndarray:
-    # (start, end)の範囲と(onset, wakeup)の範囲が重なるものを取得
     this_event_df = this_event_df.query("@start <= wakeup & onset <= @end")
 
-    # labelを作成
     # onset_pos, wakeup_pos, onset_offset, wakeup_offset, onset_bbox_size, wakeup_bbox_size
     label = np.zeros((num_frames, 6))
     for onset, wakeup in this_event_df[["onset", "wakeup"]].to_numpy():
@@ -35,7 +33,6 @@ def get_centernet_label(
         wakeup_pos = int((wakeup - start) / duration * num_frames)
         wakeup_offset = (wakeup - start) / duration * num_frames - wakeup_pos
 
-        # 区間に入らない場合は、posをclipする.
         # e.g. num_frames=100, onset_pos=50, wakeup_pos=150
         # -> onset_pos=50, wakeup_pos=100, bbox_size=(100-50)/100=0.5
         bbox_size = (min(wakeup_pos, num_frames) - max(onset_pos, 0)) / num_frames

@@ -3,8 +3,8 @@ from typing import Callable, Optional
 import torch
 import torch.nn as nn
 
-from src.models.feature_extractor.cnn import CNNSpectrogram
-from src.models.feature_extractor.spectrogram import SpecFeatureExtractor
+from detect_sleep_states.models.feature_extractor.cnn import CNNSpectrogram
+from detect_sleep_states.models.feature_extractor.spectrogram import SpecFeatureExtractor
 
 
 class PANNsFeatureExtractor(nn.Module):

@@ -7,9 +7,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from scipy.optimize import linear_sum_assignment
 
-from src.augmentation.cutmix import Cutmix
-from src.augmentation.mixup import Mixup
-from src.models.base import BaseModel
+from detect_sleep_states.augmentation.cutmix import Cutmix
+from detect_sleep_states.augmentation.mixup import Mixup
+from detect_sleep_states.models.base import BaseModel
 
 
 def generalized_box_iou(boxes1: torch.Tensor, boxes2: torch.Tensor) -> torch.Tensor:

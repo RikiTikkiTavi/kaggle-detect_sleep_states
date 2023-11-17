@@ -2,21 +2,21 @@ from typing import Union
 
 import torch.nn as nn
 
-from src.conf import DecoderConfig, FeatureExtractorConfig, InferenceConfig, TrainConfig
-from src.models.base import BaseModel
-from src.models.centernet import CenterNet
-from src.models.decoder.lstmdecoder import LSTMDecoder
-from src.models.decoder.mlpdecoder import MLPDecoder
-from src.models.decoder.transformercnndecoder import TransformerCNNDecoder
-from src.models.decoder.transformerdecoder import TransformerDecoder
-from src.models.decoder.unet1ddecoder import UNet1DDecoder
-from src.models.detr2D import DETR2DCNN
-from src.models.feature_extractor.cnn import CNNSpectrogram
-from src.models.feature_extractor.lstm import LSTMFeatureExtractor
-from src.models.feature_extractor.panns import PANNsFeatureExtractor
-from src.models.feature_extractor.spectrogram import SpecFeatureExtractor
-from src.models.spec1D import Spec1D
-from src.models.spec2Dcnn import Spec2DCNN
+from detect_sleep_states.config import DecoderConfig, FeatureExtractorConfig, InferenceConfig, TrainConfig
+from detect_sleep_states.models.base import BaseModel
+from detect_sleep_states.models.centernet import CenterNet
+from detect_sleep_states.models.decoder.lstmdecoder import LSTMDecoder
+from detect_sleep_states.models.decoder.mlpdecoder import MLPDecoder
+from detect_sleep_states.models.decoder.transformercnndecoder import TransformerCNNDecoder
+from detect_sleep_states.models.decoder.transformerdecoder import TransformerDecoder
+from detect_sleep_states.models.decoder.unet1ddecoder import UNet1DDecoder
+from detect_sleep_states.models.detr2D import DETR2DCNN
+from detect_sleep_states.models.feature_extractor.cnn import CNNSpectrogram
+from detect_sleep_states.models.feature_extractor.lstm import LSTMFeatureExtractor
+from detect_sleep_states.models.feature_extractor.panns import PANNsFeatureExtractor
+from detect_sleep_states.models.feature_extractor.spectrogram import SpecFeatureExtractor
+from detect_sleep_states.models.spec1D import Spec1D
+from detect_sleep_states.models.spec2Dcnn import Spec2DCNN
 
 FEATURE_EXTRACTOR_TYPE = Union[
     CNNSpectrogram, PANNsFeatureExtractor, LSTMFeatureExtractor, SpecFeatureExtractor
