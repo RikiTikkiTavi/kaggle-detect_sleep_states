@@ -1,5 +1,6 @@
 data_dir: /home/egor/Projects/Pycharm/kaggle-detect_sleep_states/data/raw
 processed_dir: /home/egor/Projects/Pycharm/kaggle-detect_sleep_states/data/processed
-output_dir: /home/egor/Projects/Pycharm/kaggle-detect_sleep_states/logs
+output_dir: /home/egor/Projects/Pycharm/kaggle-detect_sleep_states/outputs
 model_dir: /home/egor/Projects/Pycharm/kaggle-detect_sleep_states/models
 sub_dir: ./
+mlflow_store_dir: /home/egor/Projects/Pycharm/kaggle-detect_sleep_states/ml-runs

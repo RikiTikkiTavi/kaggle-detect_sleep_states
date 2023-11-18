@@ -9,6 +9,7 @@ class DirConfig:
     output_dir: str
     model_dir: str
     sub_dir: str
+    mlflow_store_dir: str
 
 
 @dataclass

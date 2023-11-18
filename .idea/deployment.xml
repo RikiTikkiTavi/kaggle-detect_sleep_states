@@ -10,11 +10,17 @@
             <mapping local="" />
           </mappings>
           <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/logs" />
+            <excludedPath local="true" path="$PROJECT_DIR$/outputs" />
             <excludedPath local="true" path="$PROJECT_DIR$/models" />
             <excludedPath local="true" path="$PROJECT_DIR$/data" />
             <excludedPath path="/kaggle-detect_sleep_states/data" />
             <excludedPath local="true" path="$PROJECT_DIR$/.dvc" />
+            <excludedPath local="true" path="$PROJECT_DIR$/ml-runs" />
+            <excludedPath path="/kaggle-detect_sleep_states/.venv" />
+            <excludedPath path="/kaggle-detect_sleep_states/.dvc" />
+            <excludedPath path="/kaggle-detect_sleep_states/ml-runs" />
+            <excludedPath path="/kaggle-detect_sleep_states/logs" />
+            <excludedPath path="/kaggle-detect_sleep_states/outputs" />
           </excludedPaths>
         </serverdata>
       </paths>

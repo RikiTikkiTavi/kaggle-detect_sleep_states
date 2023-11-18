@@ -28,9 +28,13 @@ def main(cfg: TrainConfig):
 
     # init lightning model
     datamodule = SleepDataModule(cfg)
-    _logger.info("Set Up DataModule")
+    _logger.info("Setting up DataModule ...")
     model = PLSleepModel(
-        cfg, datamodule.valid_event_df, len(cfg.features), len(cfg.labels), cfg.duration
+        cfg=cfg,
+        val_event_df=datamodule.valid_event_df,
+        feature_dim=len(cfg.features),
+        num_classes=len(cfg.labels),
+        duration=cfg.duration
     )
 
     # set callbacks
@@ -47,11 +51,14 @@ def main(cfg: TrainConfig):
 
     # init experiment logger
     pl_logger = MLFlowLogger(
-        experiment_name=cfg.exp_name
+        experiment_name=cfg.exp_name,
+        save_dir=cfg.dir.mlflow_store_dir,
+        log_model=True
     )
 
     pl_logger.log_hyperparams(cfg)
 
+    _logger.info("Setting up Trainer ...")
     trainer = Trainer(
         # env
         default_root_dir=Path.cwd(),
@@ -76,7 +83,8 @@ def main(cfg: TrainConfig):
     trainer.fit(model, datamodule=datamodule)
 
     # load best weights
-    model = model.load_from_checkpoint(
+    _logger.info(f"Loading best weights: {checkpoint_cb.best_model_path}")
+    model = PLSleepModel.load_from_checkpoint(
         checkpoint_cb.best_model_path,
         cfg=cfg,
         val_event_df=datamodule.valid_event_df,
@@ -84,8 +92,8 @@ def main(cfg: TrainConfig):
         num_classes=len(cfg.labels),
         duration=cfg.duration,
     )
-    weights_path = str("model_weights.pth")  # type: ignore
-    _logger.info(f"Extracting and saving best weights: {weights_path}")
+    weights_path = Path.cwd() / "model_weights.pth"
+    _logger.info(f"Saving best weights: {weights_path} ...")
     torch.save(model.model.state_dict(), weights_path)
 
     return

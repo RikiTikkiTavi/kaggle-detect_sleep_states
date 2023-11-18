@@ -4,14 +4,14 @@ hydra:
     name: train
     chdir: true
   run:
-    dir: ${dir.output_dir}/${hydra.job.name}/${exp_name}/single
+    dir: ${dir.output_dir}/${hydra.job.name}/${exp_name}/${now:%Y-%m-%d_%H-%M-%S}/single
   sweep:
     dir: ${dir.output_dir}/${hydra.job.name}/${exp_name}
     subdir: run${hydra.job.num}
 
 defaults:
   - _self_
-  - dir: local
+  - dir: taurus
   - dataset: seg
   - model: Spec2DCNN
   - feature_extractor: CNNSpectrogram
@@ -21,7 +21,7 @@ defaults:
 seed: 42
 exp_name: dummy
 batch_size: 32
-num_workers: 24
+num_workers: 12
 duration: 5760
 downsample_rate: 2
 upsample_rate: 1

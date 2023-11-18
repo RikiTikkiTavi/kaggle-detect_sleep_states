@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --job-name="isml-notebook"
+#SBATCH --job-name="dss-notebook"
 #SBATCH --output="/beegfs/ws/0/s4610340-sleep_states/.logs/notebook_job_cpu/slurm-%j.out"
 #SBATCH --error="/beegfs/ws/0/s4610340-sleep_states/.logs/notebook_job_cpu/slurm-%j.out"
 #SBATCH --account="p_scads"
@@ -10,7 +10,7 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem-per-cpu=5000
 
-module load modenv/hiera GCCcore/10.3.0 Python/3.9.5 GCC/10.3.0
+module load modenv/hiera GCC/11.3.0 Python/3.10.4 CUDA/11.8.0
 
 source /beegfs/ws/0/s4610340-sleep_states/kaggle-detect_sleep_states/.venv/bin/activate
 
