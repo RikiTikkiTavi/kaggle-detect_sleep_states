@@ -11,11 +11,12 @@ from detect_sleep_states.config import InferenceConfig, TrainConfig
 from detect_sleep_states.utils.common import gaussian_label, nearest_valid_size, negative_sampling, random_crop
 from detect_sleep_states.utils.common import pad_if_needed
 
+
 ###################
 # Label
 ###################
 def get_seg_label(
-    this_event_df: pd.DataFrame, num_frames: int, duration: int, start: int, end: int
+        this_event_df: pd.DataFrame, num_frames: int, duration: int, start: int, end: int
 ) -> np.ndarray:
     # # (start, end)の範囲と(onset, wakeup)の範囲が重なるものを取得
     this_event_df = this_event_df.query("@start <= wakeup & onset <= @end")
@@ -39,12 +40,13 @@ def get_seg_label(
 
 class SegTrainDataset(Dataset):
     def __init__(
-        self,
-        cfg: TrainConfig,
-        features: dict[str, np.ndarray],
-        event_df: pl.DataFrame,
+            self,
+            cfg: TrainConfig,
+            features: dict[str, np.ndarray],
+            event_df: pl.DataFrame,
     ):
         self.cfg = cfg
+        # id | night | onset | wakeup
         self.event_df: pd.DataFrame = (
             event_df.pivot(index=["series_id", "night"], columns="event", values="step")
             .drop_nulls()
@@ -60,23 +62,30 @@ class SegTrainDataset(Dataset):
         return len(self.event_df)
 
     def __getitem__(self, idx):
+        # Choose event
         event = np.random.choice(["onset", "wakeup"], p=[0.5, 0.5])
+        # Get step of the selected event
         pos = self.event_df.at[idx, event]
+        # Get series id of the selected event
         series_id = self.event_df.at[idx, "series_id"]
-        self.event_df["series_id"]
+        # Get events corresponding to chosen series_id
         this_event_df = self.event_df.query("series_id == @series_id").reset_index(drop=True)
-        # extract data matching series_id
+        # Extract data matching series_id
         this_feature = self.features[series_id]  # (n_steps, num_features)
+        # Length of series
         n_steps = this_feature.shape[0]
 
         # sample background
+        # Sample step which is not an event
         if random.random() < self.cfg.dataset.bg_sampling_rate:
             pos = negative_sampling(this_event_df, n_steps)
 
-        # crop
+        # If series is longer then defined duration, crop in a way
+        # that pos is contained in the interval
         if n_steps > self.cfg.duration:
             start, end = random_crop(pos, self.cfg.duration, n_steps)
             feature = this_feature[start:end]
+        # Otherwsie pad the sequence
         else:
             start, end = 0, self.cfg.duration
             feature = pad_if_needed(this_feature, self.cfg.duration)
@@ -105,10 +114,10 @@ class SegTrainDataset(Dataset):
 
 class SegValidDataset(Dataset):
     def __init__(
-        self,
-        cfg: TrainConfig,
-        chunk_features: dict[str, np.ndarray],
-        event_df: pl.DataFrame,
+            self,
+            cfg: TrainConfig,
+            chunk_features: dict[str, np.ndarray],
+            event_df: pl.DataFrame,
     ):
         self.cfg = cfg
         self.chunk_features = chunk_features
@@ -157,9 +166,9 @@ class SegValidDataset(Dataset):
 
 class SegTestDataset(Dataset):
     def __init__(
-        self,
-        cfg: InferenceConfig,
-        chunk_features: dict[str, np.ndarray],
+            self,
+            cfg: InferenceConfig,
+            chunk_features: dict[str, np.ndarray],
     ):
         self.cfg = cfg
         self.chunk_features = chunk_features
