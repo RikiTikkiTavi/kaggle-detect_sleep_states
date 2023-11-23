@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 import numpy as np
@@ -14,6 +15,7 @@ from detect_sleep_states.utils.common import nearest_valid_size
 from detect_sleep_states.utils.metrics import event_detection_ap
 from detect_sleep_states.utils.post_process import post_process_for_seg
 
+_logger = logging.getLogger(__name__)
 
 class PLSleepModel(LightningModule):
     def __init__(
@@ -107,7 +109,7 @@ class PLSleepModel(LightningModule):
             np.save("preds.npy", preds)
             val_pred_df.write_csv("val_pred_df.csv")
             torch.save(self.model.state_dict(), "best_model.pth")
-            print(f"Saved best model {self.__best_loss} -> {loss}")
+            _logger.info(f"Saved best model {self.__best_loss} -> {loss}")
             self.__best_loss = loss
 
         self.validation_step_outputs.clear()

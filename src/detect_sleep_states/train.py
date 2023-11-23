@@ -8,7 +8,7 @@ from pytorch_lightning.callbacks import (
     LearningRateMonitor,
     ModelCheckpoint,
     RichModelSummary,
-    RichProgressBar,
+    TQDMProgressBar,
 )
 from pytorch_lightning.loggers import MLFlowLogger
 
@@ -46,14 +46,16 @@ def main(cfg: TrainConfig):
         save_last=False,
     )
     lr_monitor = LearningRateMonitor("epoch")
-    progress_bar = RichProgressBar()
+    progress_bar = TQDMProgressBar()
     model_summary = RichModelSummary(max_depth=2)
 
     # init experiment logger
     pl_logger = MLFlowLogger(
         experiment_name=cfg.exp_name,
         save_dir=cfg.dir.mlflow_store_dir,
-        log_model=True
+        run_name=cfg.run_name,
+        log_model=True,
+        artifact_location=str(Path.cwd())
     )
 
     pl_logger.log_hyperparams(cfg)

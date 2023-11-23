@@ -28,6 +28,8 @@ FEATURE_NAMES = [
     "minute_cos",
     "anglez_sin",
     "anglez_cos",
+    "day_of_week_sin",
+    "day_of_week_cos"
 ]
 
 ANGLEZ_MEAN = -8.810476
@@ -37,7 +39,7 @@ ENMO_STD = 0.101829
 
 
 def to_coord(x: pl.Expr, max_: int, name: str) -> list[pl.Expr]:
-    rad = 2 * np.pi * (x % max_) / max_
+    rad = 2 * np.pi * x / max_
     x_sin = rad.sin()
     x_cos = rad.cos()
 
@@ -50,8 +52,10 @@ def deg_to_rad(x: pl.Expr) -> pl.Expr:
 
 def add_feature(series_df: pl.DataFrame) -> pl.DataFrame:
     series_df = (
-        series_df.with_row_count("step")
+        series_df
+        .with_row_count("step")
         .with_columns(
+            *to_coord(pl.col("timestamp").dt.weekday(), 7, "day_of_week"),
             *to_coord(pl.col("timestamp").dt.hour(), 24, "hour"),
             *to_coord(pl.col("timestamp").dt.month(), 12, "month"),
             *to_coord(pl.col("timestamp").dt.minute(), 60, "minute"),

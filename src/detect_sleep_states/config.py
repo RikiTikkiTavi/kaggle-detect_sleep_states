@@ -99,6 +99,7 @@ class PrepareDataConfig:
 @dataclass
 class TrainConfig:
     exp_name: str
+    run_name: str
     seed: int
     batch_size: int
     num_workers: int

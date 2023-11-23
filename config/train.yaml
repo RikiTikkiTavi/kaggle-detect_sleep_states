@@ -20,6 +20,7 @@ defaults:
 
 seed: 42
 exp_name: dummy
+run_name: dummy
 batch_size: 32
 num_workers: 12
 duration: 5760
@@ -61,6 +62,8 @@ features:
   # - "step"
   # - "month_sin"
   # - "month_cos"
+  - "day_of_week_sin"
+  - "day_of_week_cos"
   - "hour_sin"
   - "hour_cos"
   # - "minute_sin"
