@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 import hydra
+import numpy as np
 import torch
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import (
@@ -9,6 +10,7 @@ from pytorch_lightning.callbacks import (
     ModelCheckpoint,
     RichModelSummary,
     TQDMProgressBar,
+    Callback
 )
 from pytorch_lightning.loggers import MLFlowLogger
 
@@ -16,9 +18,8 @@ from detect_sleep_states.config import TrainConfig
 from detect_sleep_states.data_module import SleepDataModule
 from detect_sleep_states.model_module import PLSleepModel
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s:%(name)s - %(message)s"
-)
+import detect_sleep_states.plot.plot_predictions
+
 _logger = logging.getLogger(__file__)
 
 
@@ -86,7 +87,7 @@ def main(cfg: TrainConfig):
 
     # load best weights
     _logger.info(f"Loading best weights: {checkpoint_cb.best_model_path}")
-    model = PLSleepModel.load_from_checkpoint(
+    model: PLSleepModel = PLSleepModel.load_from_checkpoint(
         checkpoint_cb.best_model_path,
         cfg=cfg,
         val_event_df=datamodule.valid_event_df,
@@ -97,6 +98,24 @@ def main(cfg: TrainConfig):
     weights_path = Path.cwd() / "model_weights.pth"
     _logger.info(f"Saving best weights: {weights_path} ...")
     torch.save(model.model.state_dict(), weights_path)
+
+    _logger.info("Plotting predictions ...")
+    keys = np.load("keys.npy")
+    predictions = np.load("preds.npy")
+    labels = np.load("labels.npy")
+    keys_ix_sample = np.random.choice(len(keys), cfg.n_chunks_visualize)
+    for i in keys_ix_sample:
+        fig, ax = detect_sleep_states.plot.plot_predictions.plot_predictions_chunk(
+            predictions=predictions[i],
+            features=datamodule.valid_chunk_features[keys[i]],
+            labels=labels[i],
+            cfg=cfg
+        )
+        pl_logger.experiment.log_figure(
+            run_id=pl_logger.run_id,
+            figure=fig,
+            artifact_file=f"plots/val_predictions/{keys[i]}.png"
+        )
 
     return
 

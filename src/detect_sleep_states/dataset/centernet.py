@@ -107,7 +107,7 @@ class CenterNetTrainDataset(Dataset):
         num_frames = self.upsampled_num_frames // self.cfg.downsample_rate
         label = get_centernet_label(this_event_df, num_frames, self.cfg.duration, start, end)
         label[:, [0, 1]] = gaussian_label(
-            label[:, [0, 1]], offset=self.cfg.dataset.offset, sigma=self.cfg.dataset.sigma
+            label[:, [0, 1]], sigma=self.cfg.dataset.sigma
         )
 
         return {

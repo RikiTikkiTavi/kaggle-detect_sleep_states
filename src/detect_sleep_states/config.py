@@ -55,7 +55,7 @@ class DatasetConfig:
     name: str
     batch_size: int
     num_workers: int
-    offset: int
+    radius: int
     sigma: int
     bg_sampling_rate: float
 
@@ -94,6 +94,7 @@ class WeightConfig:
 class PrepareDataConfig:
     dir: DirConfig
     phase: str
+    rolling_var_period: int
 
 
 @dataclass
@@ -119,6 +120,7 @@ class TrainConfig:
     dataset: DatasetConfig
     aug: AugmentationConfig
     pp: PostProcessConfig
+    n_chunks_visualize: int
 
 
 @dataclass

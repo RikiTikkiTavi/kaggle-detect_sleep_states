@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -14,17 +15,21 @@ from detect_sleep_states.models.common import get_model
 from detect_sleep_states.utils.common import nearest_valid_size
 from detect_sleep_states.utils.metrics import event_detection_ap
 from detect_sleep_states.utils.post_process import post_process_for_seg
+from detect_sleep_states.plot.plot_predictions import plot_predictions_chunk
+
+import detect_sleep_states.data_module
 
 _logger = logging.getLogger(__name__)
 
+
 class PLSleepModel(LightningModule):
     def __init__(
-        self,
-        cfg: TrainConfig,
-        val_event_df: pl.DataFrame,
-        feature_dim: int,
-        num_classes: int,
-        duration: int,
+            self,
+            cfg: TrainConfig,
+            val_event_df: pl.DataFrame,
+            feature_dim: int,
+            num_classes: int,
+            duration: int,
     ):
         super().__init__()
         self.cfg = cfg
@@ -41,11 +46,11 @@ class PLSleepModel(LightningModule):
         self.__best_loss = np.inf
 
     def forward(
-        self,
-        x: torch.Tensor,
-        labels: Optional[torch.Tensor] = None,
-        do_mixup: bool = False,
-        do_cutmix: bool = False,
+            self,
+            x: torch.Tensor,
+            labels: Optional[torch.Tensor] = None,
+            do_mixup: bool = False,
+            do_cutmix: bool = False,
     ) -> ModelOutput:
         return self.model(x, labels, do_mixup, do_cutmix)
 
@@ -109,7 +114,6 @@ class PLSleepModel(LightningModule):
             np.save("preds.npy", preds)
             val_pred_df.write_csv("val_pred_df.csv")
             torch.save(self.model.state_dict(), "best_model.pth")
-            _logger.info(f"Saved best model {self.__best_loss} -> {loss}")
             self.__best_loss = loss
 
         self.validation_step_outputs.clear()

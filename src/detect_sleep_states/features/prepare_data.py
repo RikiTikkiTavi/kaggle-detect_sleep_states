@@ -1,4 +1,5 @@
 import shutil
+from datetime import timedelta
 from pathlib import Path
 
 import hydra
@@ -29,7 +30,10 @@ FEATURE_NAMES = [
     "anglez_sin",
     "anglez_cos",
     "day_of_week_sin",
-    "day_of_week_cos"
+    "day_of_week_cos",
+    "rolling_total_var",
+    "anglez_rolling_total_var",
+    "enmo_rolling_total_var"
 ]
 
 ANGLEZ_MEAN = -8.810476
@@ -50,9 +54,26 @@ def deg_to_rad(x: pl.Expr) -> pl.Expr:
     return np.pi / 180 * x
 
 
-def add_feature(series_df: pl.DataFrame) -> pl.DataFrame:
+def total_variation(x: pl.Expr) -> float:
+    return x.diff()[1:].abs().sum()
+
+
+def rolling_total_variation(
+        data: pl.Expr,
+        period: timedelta,
+        index_col="timestamp",
+        name: str = "rolling_total_var"
+):
+    return data.rolling(index_column=index_col, period=period)
+
+
+def add_feature(
+        series_df: pl.DataFrame,
+        period: timedelta
+) -> pl.DataFrame:
     series_df = (
         series_df
+        .set_sorted(column="timestamp")
         .with_row_count("step")
         .with_columns(
             *to_coord(pl.col("timestamp").dt.weekday(), 7, "day_of_week"),
@@ -62,6 +83,8 @@ def add_feature(series_df: pl.DataFrame) -> pl.DataFrame:
             pl.col("step") / pl.count("step"),
             pl.col('anglez_rad').sin().alias('anglez_sin'),
             pl.col('anglez_rad').cos().alias('anglez_cos'),
+            pl.col(['timestamp', 'anglez']).rolling(index_column="timestamp", period=period, check_sorted=False).map_batches(total_variation).alias("anglez_rolling_total_var"),
+            pl.col('enmo').rolling(index_column="timestamp", period=period, check_sorted=False).map_batches(total_variation).alias("enmo_rolling_total_var")
         )
         .select("series_id", *FEATURE_NAMES)
     )
@@ -122,7 +145,7 @@ def main(cfg: PrepareDataConfig):
         n_unique = series_df.get_column("series_id").n_unique()
     with trace("Save features"):
         for series_id, this_series_df in tqdm(series_df.group_by("series_id"), total=n_unique):
-            this_series_df = add_feature(this_series_df)
+            this_series_df = add_feature(this_series_df, period=timedelta(minutes=cfg.rolling_var_period))
             series_dir = processed_dir / series_id  # type: ignore
             save_each_series(this_series_df, FEATURE_NAMES, series_dir)
 

@@ -18,7 +18,7 @@ from detect_sleep_states.utils.common import pad_if_needed
 def get_seg_label(
         this_event_df: pd.DataFrame, num_frames: int, duration: int, start: int, end: int
 ) -> np.ndarray:
-    # # (start, end)の範囲と(onset, wakeup)の範囲が重なるものを取得
+
     this_event_df = this_event_df.query("@start <= wakeup & onset <= @end")
 
     label = np.zeros((num_frames, 3))
@@ -102,7 +102,9 @@ class SegTrainDataset(Dataset):
         num_frames = self.upsampled_num_frames // self.cfg.downsample_rate
         label = get_seg_label(this_event_df, num_frames, self.cfg.duration, start, end)
         label[:, [1, 2]] = gaussian_label(
-            label[:, [1, 2]], offset=self.cfg.dataset.offset, sigma=self.cfg.dataset.sigma
+            label[:, [1, 2]],
+            sigma=self.cfg.dataset.sigma,
+            radius=self.cfg.dataset.radius
         )
 
         return {

@@ -9,14 +9,16 @@ import numpy as np
 import pandas as pd
 import psutil
 
+from scipy.ndimage import gaussian_filter1d
+
 
 @contextmanager
 def trace(title):
     t0 = time.time()
     p = psutil.Process(os.getpid())
-    m0 = p.memory_info().rss / 2.0**30
+    m0 = p.memory_info().rss / 2.0 ** 30
     yield
-    m1 = p.memory_info().rss / 2.0**30
+    m1 = p.memory_info().rss / 2.0 ** 30
     delta = m1 - m0
     sign = "+" if delta >= 0 else "-"
     delta = math.fabs(delta)
@@ -70,15 +72,15 @@ def negative_sampling(this_event_df: pd.DataFrame, num_steps: int) -> int:
 
 # ref: https://www.kaggle.com/competitions/dfl-bundesliga-data-shootout/discussion/360236#2004730
 def gaussian_kernel(length: int, sigma: int = 3) -> np.ndarray:
-    x = np.ogrid[-length : length + 1]
-    h = np.exp(-(x**2) / (2 * sigma * sigma))  # type: ignore
+    x = np.ogrid[-length: length + 1]
+    h = np.exp(-(x ** 2) / (2 * sigma * sigma))  # type: ignore
     h[h < np.finfo(h.dtype).eps * h.max()] = 0
     return h
 
 
-def gaussian_label(label: np.ndarray, offset: int, sigma: int) -> np.ndarray:
+def gaussian_label(label: np.ndarray, radius: int, sigma: int) -> np.ndarray:
     num_events = label.shape[1]
     for i in range(num_events):
-        label[:, i] = np.convolve(label[:, i], gaussian_kernel(offset, sigma), mode="same")
+        label[:, i] = np.convolve(label[:, i], gaussian_kernel(radius, sigma), mode="same")
 
     return label
