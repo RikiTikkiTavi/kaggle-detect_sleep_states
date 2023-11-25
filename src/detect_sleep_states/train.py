@@ -2,7 +2,9 @@ import logging
 from pathlib import Path
 
 import hydra
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import torch
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import (
@@ -27,8 +29,10 @@ _logger = logging.getLogger(__file__)
 def main(cfg: TrainConfig):
     seed_everything(cfg.seed)
 
-    # init lightning model
+    # init data module
     datamodule = SleepDataModule(cfg)
+    _logger.info(datamodule.train_event_df)
+
     _logger.info("Setting up DataModule ...")
     model = PLSleepModel(
         cfg=cfg,
@@ -103,19 +107,38 @@ def main(cfg: TrainConfig):
     keys = np.load("keys.npy")
     predictions = np.load("preds.npy")
     labels = np.load("labels.npy")
-    keys_ix_sample = np.random.choice(len(keys), cfg.n_chunks_visualize)
-    for i in keys_ix_sample:
-        fig, ax = detect_sleep_states.plot.plot_predictions.plot_predictions_chunk(
-            predictions=predictions[i],
-            features=datamodule.valid_chunk_features[keys[i]],
-            labels=labels[i],
-            cfg=cfg
-        )
-        pl_logger.experiment.log_figure(
-            run_id=pl_logger.run_id,
-            figure=fig,
-            artifact_file=f"plots/val_predictions/{keys[i]}.png"
-        )
+    val_pred_df = pd.read_csv("val_pred_df.csv")
+
+    df_keys = pd.DataFrame(
+        np.char.split(keys, "_").tolist(),
+        columns=["series_id", "chunk_id"]
+    ).reset_index(names=["key_i"])
+
+    for n_series, series_id in enumerate(val_pred_df.groupby("series_id")["score"].sum().sort_values().index):
+
+        if n_series >= cfg.n_chunks_visualize:
+            break
+
+        for i in df_keys.loc[df_keys["series_id"] == series_id]["key_i"]:
+            fig, ax = detect_sleep_states.plot.plot_predictions.plot_predictions_chunk(
+                predictions=predictions[i],
+                features=datamodule.valid_chunk_features[keys[i]],
+                labels=labels[i],
+                cfg=cfg
+            )
+            if np.any(labels[i][:, 1] > 1 / 2):
+                artifact_folder = "plots/val/predictions/onset"
+            elif np.any(labels[i][:, 2] > 1 / 2):
+                artifact_folder = "plots/val/predictions/wakeup"
+            else:
+                artifact_folder = "plots/val/predictions/bg"
+
+            pl_logger.experiment.log_figure(
+                run_id=pl_logger.run_id,
+                figure=fig,
+                artifact_file=f"{artifact_folder}/{n_series}-{keys[i]}.png"
+            )
+            plt.close(fig)
 
     return
 

@@ -34,33 +34,45 @@ def plot_predictions_chunk(
     ax_prob: plt.Axes = ax.twinx()
     ax_prob.plot(
         predictions[:, 0],
-        label="predictions[onset]",
-        color=colors[2],
-        linewidth=3,
+        label="predictions[asleep]",
+        color=colors[4],
+        linewidth=2.5,
         alpha=0.8
     )
-    ax_prob.plot(predictions[:, 1], label="predictions[awake]", color=colors[3], linewidth=3, alpha=0.8)
-
-    chunk_labels_smoothed = detect_sleep_states.utils.common.gaussian_label(
-        labels[:, :],
-        sigma=cfg.dataset.sigma,
-        radius=cfg.dataset.radius
+    ax_prob.plot(
+        predictions[:, 1],
+        label="predictions[onset]",
+        color=colors[2],
+        linewidth=2.5,
+        alpha=1
     )
     ax_prob.plot(
-        chunk_labels_smoothed[:, 0],
-        label="labels[onset]",
-        color=colors[2],
+        predictions[:, 2],
+        label="predictions[wakeup]",
+        color=colors[3],
+        linewidth=2.5,
+        alpha=1
+    )
+    ax_prob.set_ylim((-1.05, 1.05))
+
+
+    labels[:, 0][labels[:, 0] == 1] = -1 # asleep
+    labels[:, 0][labels[:, 0] == 0] = 1 # awake
+    ax_prob.plot(
+        labels[:, 0],
+        color="black",
         linestyle="--",
         linewidth=3,
-        path_effects=[pe.Stroke(linewidth=3, foreground='white'), pe.Normal()]
+        label="labels"
     )
-    ax_prob.plot(
-        chunk_labels_smoothed[:, 1],
-        label="labels[awake]",
-        color=colors[3],
-        linestyle=":",
-        linewidth=3,
-        path_effects=[pe.Stroke(linewidth=3, foreground='white'), pe.Normal()]
+
+    ax_prob.axhline(
+        y=cfg.pp.score_th,
+        color="black",
+        alpha=0.7,
+        linewidth=2,
+        linestyle="--",
+        label="score_th"
     )
 
     ax_prob.legend(loc="upper left")

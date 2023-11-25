@@ -139,7 +139,7 @@ class CenterNet(BaseModel):
         else:
             return logits
 
-    def _logits_to_proba_per_step(self, logits: torch.Tensor, org_duration: int) -> torch.Tensor:
+    def logits_to_proba_per_step(self, logits: torch.Tensor, org_duration: int) -> torch.Tensor:
         # logits: (bs, duration, 6)
         # 6: (onset, wakeup, onset_offset, wakeup_offset, onset_bbox_size, wakeup_bbox_size)
         # return: (bs, org_duration, 2), 2: (onset, wakeup)
@@ -173,7 +173,7 @@ class CenterNet(BaseModel):
 
         return torch.from_numpy(proba_per_step).to(device)
 
-    def _correct_labels(self, labels: torch.Tensor, org_duration: int) -> torch.Tensor:
+    def correct_labels(self, labels: torch.Tensor, org_duration: int) -> torch.Tensor:
         # labels: (bs, duration, 6)
         # 6: (onset, wakeup, onset_offset, wakeup_offset, onset_bbox_size, wakeup_bbox_size)
         return resize(labels, size=[org_duration, labels.shape[-1]], antialias=False)[:, :, [0, 1]]

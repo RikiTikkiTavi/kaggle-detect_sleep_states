@@ -32,7 +32,6 @@ class Spec2DCNN(BaseModel):
         self.decoder = decoder
         self.mixup = Mixup(mixup_alpha)
         self.cutmix = Cutmix(cutmix_alpha)
-        self.loss_fn = nn.BCEWithLogitsLoss()
 
     def _forward(
         self,
@@ -56,9 +55,9 @@ class Spec2DCNN(BaseModel):
         else:
             return logits
 
-    def _logits_to_proba_per_step(self, logits: torch.Tensor, org_duration: int) -> torch.Tensor:
+    def logits_to_proba_per_step(self, logits: torch.Tensor, org_duration: int) -> torch.Tensor:
         preds = logits.sigmoid()
-        return resize(preds, size=[org_duration, preds.shape[-1]], antialias=False)[:, :, [1, 2]]
+        return resize(preds, size=[org_duration, preds.shape[-1]], antialias=False)
 
-    def _correct_labels(self, labels: torch.Tensor, org_duration: int) -> torch.Tensor:
-        return resize(labels, size=[org_duration, labels.shape[-1]], antialias=False)[:, :, [1, 2]]
+    def correct_labels(self, labels: torch.Tensor, org_duration: int) -> torch.Tensor:
+        return resize(labels, size=[org_duration, labels.shape[-1]], antialias=False)

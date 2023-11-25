@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -10,6 +11,7 @@ from detect_sleep_states.config import TrainConfig
 from detect_sleep_states.dataset.common import get_train_ds, get_valid_ds
 from detect_sleep_states.utils.common import pad_if_needed
 
+_logger = logging.getLogger(__name__)
 
 ###################
 # Load Functions

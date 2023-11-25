@@ -1,5 +1,6 @@
-from typing import Union
+from typing import Union, Callable
 
+import torch
 import torch.nn as nn
 
 from detect_sleep_states.config import DecoderConfig, FeatureExtractorConfig, InferenceConfig, TrainConfig
@@ -27,7 +28,7 @@ DECODER_TYPE = Union[
 
 
 def get_feature_extractor(
-    cfg: FeatureExtractorConfig, feature_dim: int, num_timesteps: int
+        cfg: FeatureExtractorConfig, feature_dim: int, num_timesteps: int
 ) -> FEATURE_EXTRACTOR_TYPE:
     feature_extractor: FEATURE_EXTRACTOR_TYPE
     if cfg.name == "CNNSpectrogram":
@@ -53,7 +54,7 @@ def get_feature_extractor(
 
 
 def get_decoder(
-    cfg: DecoderConfig, n_channels: int, n_classes: int, num_timesteps: int
+        cfg: DecoderConfig, n_channels: int, n_classes: int, num_timesteps: int
 ) -> DECODER_TYPE:
     decoder: DECODER_TYPE
     if cfg.name == "UNet1DDecoder":
@@ -90,11 +91,11 @@ def get_decoder(
 
 
 def get_model(
-    cfg: TrainConfig | InferenceConfig,
-    feature_dim: int,
-    n_classes: int,
-    num_timesteps: int,
-    test: bool = False,
+        cfg: TrainConfig | InferenceConfig,
+        feature_dim: int,
+        n_classes: int,
+        num_timesteps: int,
+        test: bool = False,
 ) -> BaseModel:
     model: BaseModel
     if cfg.model.name == "Spec2DCNN":

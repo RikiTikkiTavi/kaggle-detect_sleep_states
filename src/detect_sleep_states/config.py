@@ -91,10 +91,18 @@ class WeightConfig:
 
 
 @dataclass
+class LossConfig:
+    name: str
+    params: dict[str, Any]
+
+
+@dataclass
 class PrepareDataConfig:
     dir: DirConfig
     phase: str
     rolling_var_period: int
+    dark_drop_window_size: int
+    dark_drop_th: int
 
 
 @dataclass
@@ -108,6 +116,7 @@ class TrainConfig:
     downsample_rate: int
     upsample_rate: int
     labels: list[str]
+    target_labels_idx: list[int]
     features: list[str]
     split: SplitConfig
     dir: DirConfig
@@ -121,6 +130,7 @@ class TrainConfig:
     aug: AugmentationConfig
     pp: PostProcessConfig
     n_chunks_visualize: int
+    loss: LossConfig
 
 
 @dataclass

@@ -15,3 +15,5 @@ defaults:
 
 phase: train
 rolling_var_period: 30
+dark_drop_window_size: 8640
+dark_drop_th: 50

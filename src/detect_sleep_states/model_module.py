@@ -2,16 +2,19 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+import mlflow
 import numpy as np
 import polars as pl
 import torch
 import torch.optim as optim
 from pytorch_lightning import LightningModule
+from pytorch_lightning.loggers import MLFlowLogger
 from transformers import get_cosine_schedule_with_warmup
 
 from detect_sleep_states.config import TrainConfig
 from detect_sleep_states.models.base import ModelOutput
 from detect_sleep_states.models.common import get_model
+from detect_sleep_states.loss.common import get_loss
 from detect_sleep_states.utils.common import nearest_valid_size
 from detect_sleep_states.utils.metrics import event_detection_ap
 from detect_sleep_states.utils.post_process import post_process_for_seg
@@ -29,7 +32,7 @@ class PLSleepModel(LightningModule):
             val_event_df: pl.DataFrame,
             feature_dim: int,
             num_classes: int,
-            duration: int,
+            duration: int
     ):
         super().__init__()
         self.cfg = cfg
@@ -41,9 +44,11 @@ class PLSleepModel(LightningModule):
             n_classes=num_classes,
             num_timesteps=num_timesteps // cfg.downsample_rate,
         )
+        self.loss_fn = get_loss(cfg.loss)
         self.duration = duration
         self.validation_step_outputs: list = []
         self.__best_loss = np.inf
+
 
     def forward(
             self,
@@ -57,38 +62,43 @@ class PLSleepModel(LightningModule):
     def training_step(self, batch, batch_idx):
         do_mixup = np.random.rand() < self.cfg.aug.mixup_prob
         do_cutmix = np.random.rand() < self.cfg.aug.cutmix_prob
-        output = self.model(batch["feature"], batch["label"], do_mixup, do_cutmix)
+        output: ModelOutput = self.model(batch["feature"], batch["label"], do_mixup, do_cutmix)
+        loss = self.loss_fn(output.logits, output.labels)
 
         self.log(
             "train_loss",
-            output.loss.detach().item(),
+            loss.detach().item(),
             on_step=False,
             on_epoch=True,
             logger=True,
             prog_bar=True,
         )
-        return output.loss
+        return loss
 
     def validation_step(self, batch, batch_idx):
         output = self.model.predict(batch["feature"], self.duration, batch["label"])
+        loss = self.loss_fn(output.logits, output.labels)
+
+        output.labels = self.model.correct_labels(output.labels, self.duration)
+
         self.validation_step_outputs.append(
             (
                 batch["key"],
                 output.labels.detach().cpu().numpy(),
                 output.preds.detach().cpu().numpy(),
-                output.loss.detach().item(),
+                loss.detach().item(),
             )
         )
         self.log(
             "val_loss",
-            output.loss.detach().item(),
+            loss.detach().item(),
             on_step=False,
             on_epoch=True,
             logger=True,
             prog_bar=True,
         )
 
-        return output.loss
+        return loss
 
     def on_validation_epoch_end(self):
         keys = []
@@ -101,7 +111,7 @@ class PLSleepModel(LightningModule):
 
         val_pred_df = post_process_for_seg(
             keys=keys,
-            preds=preds,
+            preds=preds[:, :, self.cfg.target_labels_idx],
             score_th=self.cfg.pp.score_th,
             distance=self.cfg.pp.distance,
         )
@@ -114,6 +124,28 @@ class PLSleepModel(LightningModule):
             np.save("preds.npy", preds)
             val_pred_df.write_csv("val_pred_df.csv")
             torch.save(self.model.state_dict(), "best_model.pth")
+
+            logger: MLFlowLogger = self.logger
+            logger.experiment.log_artifact(
+                run_id=logger.run_id,
+                local_path="keys.npy",
+                artifact_path="best/keys.npy"
+            )
+            logger.experiment.log_artifact(
+                run_id=logger.run_id,
+                local_path="labels.npy",
+                artifact_path="best/labels.npy"
+            )
+            logger.experiment.log_artifact(
+                run_id=logger.run_id,
+                local_path="preds.npy",
+                artifact_path="best/preds.npy"
+            )
+            logger.experiment.log_artifact(
+                run_id=logger.run_id,
+                local_path="val_pred_df.csv",
+                artifact_path="best/val_pred_df.csv"
+            )
             self.__best_loss = loss
 
         self.validation_step_outputs.clear()

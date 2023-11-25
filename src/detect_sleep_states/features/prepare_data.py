@@ -4,7 +4,10 @@ from pathlib import Path
 
 import hydra
 import numpy as np
+import pandas as pd
+import polars
 import polars as pl
+from pandas.core.indexers.objects import FixedForwardWindowIndexer
 from tqdm import tqdm
 
 from detect_sleep_states.config import PrepareDataConfig
@@ -31,9 +34,8 @@ FEATURE_NAMES = [
     "anglez_cos",
     "day_of_week_sin",
     "day_of_week_cos",
-    "rolling_total_var",
-    "anglez_rolling_total_var",
-    "enmo_rolling_total_var"
+    "anglez_total_variation",
+    "enmo_total_variation"
 ]
 
 ANGLEZ_MEAN = -8.810476
@@ -54,17 +56,22 @@ def deg_to_rad(x: pl.Expr) -> pl.Expr:
     return np.pi / 180 * x
 
 
-def total_variation(x: pl.Expr) -> float:
-    return x.diff()[1:].abs().sum()
+def total_variation(x: pl.Expr) -> pl.Expr:
+    return x.diff().slice(offset=1).abs().sum()
 
 
-def rolling_total_variation(
-        data: pl.Expr,
-        period: timedelta,
-        index_col="timestamp",
-        name: str = "rolling_total_var"
-):
-    return data.rolling(index_column=index_col, period=period)
+def rolling_total_variation(series_df: pl.DataFrame, period: timedelta) -> tuple[pl.Series, pl.Series]:
+    df_series_rolling_var = (
+        series_df
+        .set_sorted("timestamp")
+        .rolling(index_column="timestamp", period=period)
+        .agg([
+            total_variation(pl.col("anglez")).alias("anglez_total_variation"),
+            total_variation(pl.col("enmo")).alias("enmo_total_variation")
+        ])
+    )
+    return (df_series_rolling_var.get_column("anglez_total_variation"),
+            df_series_rolling_var.get_column("enmo_total_variation"))
 
 
 def add_feature(
@@ -83,11 +90,11 @@ def add_feature(
             pl.col("step") / pl.count("step"),
             pl.col('anglez_rad').sin().alias('anglez_sin'),
             pl.col('anglez_rad').cos().alias('anglez_cos'),
-            pl.col(['timestamp', 'anglez']).rolling(index_column="timestamp", period=period, check_sorted=False).map_batches(total_variation).alias("anglez_rolling_total_var"),
-            pl.col('enmo').rolling(index_column="timestamp", period=period, check_sorted=False).map_batches(total_variation).alias("enmo_rolling_total_var")
+            *rolling_total_variation(series_df, period)
         )
         .select("series_id", *FEATURE_NAMES)
     )
+
     return series_df
 
 
@@ -97,6 +104,46 @@ def save_each_series(this_series_df: pl.DataFrame, columns: list[str], output_di
     for col_name in columns:
         x = this_series_df.get_column(col_name).to_numpy(zero_copy_only=True)
         np.save(output_dir / f"{col_name}.npy", x)
+
+
+def drop_dark_times(this_series_df: pl.DataFrame, window_size: int, th: int, df_train_events: pl.DataFrame):
+    govno = this_series_df.get_column("anglez").to_pandas()
+    govno_rolling = govno.rolling(FixedForwardWindowIndexer(window_size=window_size),
+                                  min_periods=window_size).max().rename("anglez_forward_max")
+
+    this_series_df = (
+        this_series_df
+        .with_columns(
+            pl.col("anglez").rolling_max(window_size=window_size, min_periods=window_size).alias("anglez_backward_max"),
+            pl.from_pandas(govno_rolling)
+        )
+        .join(df_train_events.select([pl.col("step", "awake")]), on="step", how="left")
+        .with_columns(
+            pl.col("awake").fill_null(strategy="backward"),
+        )
+    )
+    return (
+        this_series_df
+        .with_columns(
+            pl
+            .when((pl.col("anglez_backward_max") < th) | (pl.col("anglez_forward_max") < th))
+            .then(pl.col("awake"))
+            .alias("awake")
+            .fill_null(1)
+        )
+        .select(
+            pl.col("series_id"),
+            pl.col("anglez"),
+            pl.col("enmo"),
+            pl.col("timestamp"),
+            pl.col("step"),
+            pl.col("anglez_rad"),
+            pl.col("awake") != 2,
+        )
+        .drop(
+            "awake"
+        )
+    )
 
 
 @hydra.main(config_path="../../../config", config_name="prepare_data", version_base="1.2")
@@ -136,15 +183,35 @@ def main(cfg: PrepareDataConfig):
                     pl.col("anglez"),
                     pl.col("enmo"),
                     pl.col("timestamp"),
+                    pl.col("step"),
                     pl.col("anglez_rad"),
                 ]
             )
             .collect(streaming=True)
             .sort(by=["series_id", "timestamp"])
         )
+
+        train_events_df = pl.from_pandas(
+            pd.read_csv(Path(cfg.dir.data_dir) / "train_events.csv")
+            .dropna()
+            .astype({
+                "step": np.uint32
+            })
+        ).with_columns(
+            pl.col("event").map_dict({"onset": 1, "wakeup": 0}).alias("awake")
+        )
+
         n_unique = series_df.get_column("series_id").n_unique()
+
     with trace("Save features"):
         for series_id, this_series_df in tqdm(series_df.group_by("series_id"), total=n_unique):
+            train_events_df_series = train_events_df.filter(pl.col("series_id") == series_id)
+            this_series_df = drop_dark_times(
+                this_series_df,
+                window_size=cfg.dark_drop_window_size,
+                th=cfg.dark_drop_th,
+                df_train_events=train_events_df_series
+            )
             this_series_df = add_feature(this_series_df, period=timedelta(minutes=cfg.rolling_var_period))
             series_dir = processed_dir / series_id  # type: ignore
             save_each_series(this_series_df, FEATURE_NAMES, series_dir)

@@ -32,6 +32,7 @@ defaults:
   - feature_extractor: CNNSpectrogram
   - decoder: UNet1DDecoder
   - split: fold_0
+  - loss: BCE
   - override hydra/launcher: submitit_slurm
 
 seed: 42
@@ -42,7 +43,7 @@ num_workers: 12
 duration: 5760
 downsample_rate: 2
 upsample_rate: 1
-n_chunks_visualize: 100
+n_chunks_visualize: 20
 
 trainer:
   epochs: 50
@@ -63,14 +64,18 @@ aug:
   
 # post_process
 pp:
-  score_th: 0.02
-  distance: 10
+  score_th: 0.1
+  distance: 360
 
 # label
 labels:
   - "awake"
   - "event_onset"
   - "event_wakeup"
+
+target_labels_idx:
+  - 1
+  - 2
 
 # feature
 features:
@@ -79,14 +84,16 @@ features:
   # - "step"
   # - "month_sin"
   # - "month_cos"
-  - "day_of_week_sin"
-  - "day_of_week_cos"
+  # - "day_of_week_sin"
+  # - "day_of_week_cos"
   - "hour_sin"
   - "hour_cos"
   # - "minute_sin"
   # - "minute_cos"
   # - "anglez_sin"
   # - "anglez_cos"
+  # - "anglez_total_variation"
+  # - "enmo_total_variation"
 
 # optimizer
 optimizer:

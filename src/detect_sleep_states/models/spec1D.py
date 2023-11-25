@@ -48,9 +48,9 @@ class Spec1D(BaseModel):
         else:
             return logits
 
-    def _logits_to_proba_per_step(self, logits: torch.Tensor, org_duration: int) -> torch.Tensor:
+    def logits_to_proba_per_step(self, logits: torch.Tensor, org_duration: int) -> torch.Tensor:
         preds = logits.sigmoid()
         return resize(preds, size=[org_duration, preds.shape[-1]], antialias=False)[:, :, [1, 2]]
 
-    def _correct_labels(self, labels: torch.Tensor, org_duration: int) -> torch.Tensor:
+    def correct_labels(self, labels: torch.Tensor, org_duration: int) -> torch.Tensor:
         return resize(labels, size=[org_duration, labels.shape[-1]], antialias=False)[:, :, [1, 2]]

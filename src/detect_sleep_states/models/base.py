@@ -9,14 +9,11 @@ import torch.nn as nn
 @dataclass
 class ModelOutput:
     logits: torch.Tensor
-    loss: Optional[torch.Tensor] = None
     preds: Optional[torch.Tensor] = None
     labels: Optional[torch.Tensor] = None
 
 
 class BaseModel(nn.Module):
-    def __init__(self):
-        super().__init__()
 
     def forward(
         self,
@@ -38,8 +35,7 @@ class BaseModel(nn.Module):
         """
         if labels is not None:
             logits, labels = self._forward(x, labels, do_mixup, do_cutmix)
-            loss = self.loss_fn(logits, labels)
-            return ModelOutput(logits=logits, loss=loss, labels=labels)
+            return ModelOutput(logits=logits, labels=labels)
         else:
             logits = self._forward(x, labels=None, do_mixup=False, do_cutmix=False)
             if isinstance(logits, torch.Tensor):
@@ -55,13 +51,7 @@ class BaseModel(nn.Module):
         labels: Optional[torch.Tensor] = None,
     ) -> ModelOutput:
         output = self.forward(x, labels, False, False)
-        preds = self._logits_to_proba_per_step(output.logits, org_duration)
-        output.preds = preds
-
-        if labels is not None:
-            labels = self._correct_labels(labels, org_duration)
-            output.labels = labels
-
+        output.preds = self.logits_to_proba_per_step(output.logits, org_duration)
         return output
 
     @abstractmethod
@@ -86,7 +76,7 @@ class BaseModel(nn.Module):
         raise NotImplementedError
 
     @abstractmethod
-    def _logits_to_proba_per_step(
+    def logits_to_proba_per_step(
         self,
         logits: torch.Tensor,
         org_duration: int,
@@ -103,7 +93,7 @@ class BaseModel(nn.Module):
         raise NotImplementedError
 
     @abstractmethod
-    def _correct_labels(
+    def correct_labels(
         self,
         labels: torch.Tensor,
         org_duration: int,

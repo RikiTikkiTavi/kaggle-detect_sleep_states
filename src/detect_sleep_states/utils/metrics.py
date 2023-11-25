@@ -29,14 +29,14 @@ tolerances = {
 
 
 def score(
-    solution: pd.DataFrame,
-    submission: pd.DataFrame,
-    tolerances: Dict[str, List[float]],
-    series_id_column_name: str,
-    time_column_name: str,
-    event_column_name: str,
-    score_column_name: str,
-    use_scoring_intervals: bool = False,
+        solution: pd.DataFrame,
+        submission: pd.DataFrame,
+        tolerances: Dict[str, List[float]],
+        series_id_column_name: str,
+        time_column_name: str,
+        event_column_name: str,
+        score_column_name: str,
+        use_scoring_intervals: bool = False,
 ) -> float:
     # Validate metric parameters
     assert len(tolerances) > 0, "Events must have defined tolerances."
@@ -80,9 +80,9 @@ def score(
 
 
 def event_detection_ap(
-    solution: pd.DataFrame,
-    submission: pd.DataFrame,
-    tolerances: Dict[str, List[float]] = tolerances,  # type: ignore
+        solution: pd.DataFrame,
+        submission: pd.DataFrame,
+        tolerances: Dict[str, List[float]] = tolerances,  # type: ignore
 ) -> float:
     # Ensure solution and submission are sorted properly
     solution = solution.sort_values([series_id_column_name, time_column_name])
@@ -197,7 +197,7 @@ def find_nearest_time_idx(times, target_time, excluded_indices, tolerance):
 
 
 def match_detections(
-    tolerance: float, ground_truths: pd.DataFrame, detections: pd.DataFrame
+        tolerance: float, ground_truths: pd.DataFrame, detections: pd.DataFrame
 ) -> pd.DataFrame:
     detections_sorted = detections.sort_values(score_column_name, ascending=False).dropna()
     is_matched = np.full_like(detections_sorted[event_column_name], False, dtype=bool)
@@ -220,7 +220,7 @@ def match_detections(
 
 
 def precision_recall_curve(
-    matches: np.ndarray, scores: np.ndarray, p: int
+        matches: np.ndarray, scores: np.ndarray, p: int
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     if len(matches) == 0:
         return [1], [0], []  # type: ignore
@@ -241,7 +241,7 @@ def precision_recall_curve(
     precision = tps / (tps + fps)
     precision[np.isnan(precision)] = 0
     recall = (
-        tps / p
+            tps / p
     )  # total number of ground truths might be different than total number of matches
 
     # Stop when full recall attained and reverse the outputs so recall is non-increasing.

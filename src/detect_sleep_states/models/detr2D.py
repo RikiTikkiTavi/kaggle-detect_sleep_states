@@ -265,7 +265,7 @@ class DETR2DCNN(BaseModel):
         else:
             return logits
 
-    def _logits_to_proba_per_step(self, logits: torch.Tensor, org_duration: int) -> torch.Tensor:
+    def logits_to_proba_per_step(self, logits: torch.Tensor, org_duration: int) -> torch.Tensor:
         device = logits.device
         x = torch.linspace(0, 1, steps=org_duration, device=device)  # (org_duration)
         objectness = logits[:, :, 0].sigmoid()  # (batch_size, max_det)
@@ -282,7 +282,7 @@ class DETR2DCNN(BaseModel):
             [gaussian_onset, gaussian_wakeup], dim=-1
         )  # (batch_size, org_duration, 2)
 
-    def _correct_labels(self, labels: torch.Tensor, org_duration: int) -> torch.Tensor:
+    def correct_labels(self, labels: torch.Tensor, org_duration: int) -> torch.Tensor:
         bs, num_queries, _ = labels.shape
         device = labels.device
         torch.arange(org_duration, device=device).float()
