@@ -1,19 +1,19 @@
 # ---------- Overriding hydra default configs ----------
 hydra:
   launcher:
-    timeout_min: 120
-    cpus_per_task: 12
-    gpus_per_node: 1
-    tasks_per_node: 1
-    nodes: 1
-    name: dss-${hydra.job.name}-${exp_name}-${run_name}
-    partition: alpha
-    gres: gpu:1
-    mem_per_cpu: 7GB
-    additional_parameters:
-      error: ${hydra.run.dir}/slurm-out.err
-      output: ${hydra.run.dir}/slurm-out.log
-    account: p_scads
+    #timeout_min: 120
+    #cpus_per_task: 12
+    #gpus_per_node: 1
+    #tasks_per_node: 1
+    #nodes: 1
+    #name: dss-${hydra.job.name}-${exp_name}-${run_name}
+    #partition: alpha
+    #gres: gpu:1
+    #mem_per_cpu: 7GB
+    #additional_parameters:
+    #  error: ${hydra.run.dir}/slurm-out.err
+    #  output: ${hydra.run.dir}/slurm-out.log
+    #account: p_scads
 
   job:
     name: train
@@ -26,14 +26,14 @@ hydra:
 
 defaults:
   - _self_
-  - dir: taurus
+  - dir: alpha-singularity
   - dataset: seg
   - model: Spec2DCNN
   - feature_extractor: CNNSpectrogram
   - decoder: UNet1DDecoder
   - split: fold_0
-  - loss: BCE
-  - override hydra/launcher: submitit_slurm
+  - loss: CrossEntropy
+  # - override hydra/launcher: submitit_slurm
 
 seed: 42
 exp_name: dummy
@@ -43,7 +43,7 @@ num_workers: 12
 duration: 5760
 downsample_rate: 2
 upsample_rate: 1
-n_chunks_visualize: 20
+n_chunks_visualize: 5
 
 trainer:
   epochs: 50
@@ -64,8 +64,8 @@ aug:
   
 # post_process
 pp:
-  score_th: 0.1
-  distance: 360
+  score_th: 0.05
+  distance: 10
 
 # label
 labels:

@@ -11,7 +11,7 @@ hydra:
 
 defaults:
   - _self_
-  - dir: taurus
+  - dir: alpha-singularity
 
 phase: train
 rolling_var_period: 30

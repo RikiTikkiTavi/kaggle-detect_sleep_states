@@ -1,0 +1,61 @@
+Bootstrap: docker
+From: nvidia/cuda:12.3.0-base-ubuntu22.04
+
+
+%setup
+mkdir ${SINGULARITY_ROOTFS}/opt/poetry-cache
+mkdir ${SINGULARITY_ROOTFS}/opt/app
+
+%files
+./src /opt/app/
+./poetry.lock /opt/app/
+./pyproject.toml /opt/app
+./README.md /opt/app
+
+%environment
+. /opt/app/.venv/bin/activate
+
+%post
+PYTHON_VERSION=3.9.5
+
+POETRY_VERSION=1.7.0
+POETRY_HOME="/opt/poetry"
+POETRY_CACHE_DIR="/opt/poetry-cache"
+POETRY_VIRTUALENVS_CREATE=true
+POETRY_VIRTUALENVS_IN_PROJECT=true
+POETRY_VIRTUALENVS_PREFER_ACTIVE_PYTHON=true
+POETRY_NO_INTERACTION=1
+
+APP_HOME="/opt/app"
+
+DEBIAN_FRONTEND=noninteractive
+ # Set timezone to Etc/UTC for tzdata.
+TZ=Etc/UTC
+ln -snf /usr/share/zoneinfo/$TZ /etc/localtime
+echo $TZ > /etc/timezone
+
+# Install git (for spock), python and poetry
+apt-get update -y
+apt-get install -y software-properties-common
+add-apt-repository ppa:deadsnakes/ppa -y
+apt-get update -y
+apt-get install -y git curl wget python3.10 python3.10-venv
+
+python3 --version
+
+curl -sSL https://install.python-poetry.org | POETRY_HOME=$POETRY_HOME python3 - --version $POETRY_VERSION
+
+# Add poetry to PATH
+PATH="$POETRY_HOME/bin:${PATH}"
+
+poetry --version
+
+cd $APP_HOME
+
+python3 -m venv ./.venv
+. .venv/bin/activate
+
+poetry export --with interactive -f requirements.txt --output requirements.txt --without-hashes
+pip install -r ./requirements.txt
+
+sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.5/zsh-in-docker.sh)"

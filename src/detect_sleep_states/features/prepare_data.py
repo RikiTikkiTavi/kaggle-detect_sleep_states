@@ -1,3 +1,4 @@
+import logging
 import shutil
 from datetime import timedelta
 from pathlib import Path
@@ -43,6 +44,7 @@ ANGLEZ_STD = 35.521877
 ENMO_MEAN = 0.041315
 ENMO_STD = 0.101829
 
+_logger = logging.getLogger(__name__)
 
 def to_coord(x: pl.Expr, max_: int, name: str) -> list[pl.Expr]:
     rad = 2 * np.pi * x / max_
@@ -81,7 +83,6 @@ def add_feature(
     series_df = (
         series_df
         .set_sorted(column="timestamp")
-        .with_row_count("step")
         .with_columns(
             *to_coord(pl.col("timestamp").dt.weekday(), 7, "day_of_week"),
             *to_coord(pl.col("timestamp").dt.hour(), 24, "hour"),
@@ -107,6 +108,7 @@ def save_each_series(this_series_df: pl.DataFrame, columns: list[str], output_di
 
 
 def drop_dark_times(this_series_df: pl.DataFrame, window_size: int, th: int, df_train_events: pl.DataFrame):
+    l1 = len(this_series_df)
     govno = this_series_df.get_column("anglez").to_pandas()
     govno_rolling = govno.rolling(FixedForwardWindowIndexer(window_size=window_size),
                                   min_periods=window_size).max().rename("anglez_forward_max")
@@ -122,12 +124,13 @@ def drop_dark_times(this_series_df: pl.DataFrame, window_size: int, th: int, df_
             pl.col("awake").fill_null(strategy="backward"),
         )
     )
-    return (
+    this_series_df = (
         this_series_df
         .with_columns(
             pl
             .when((pl.col("anglez_backward_max") < th) | (pl.col("anglez_forward_max") < th))
-            .then(pl.col("awake"))
+            .then(2)
+            .otherwise(pl.col("awake"))
             .alias("awake")
             .fill_null(1)
         )
@@ -144,6 +147,10 @@ def drop_dark_times(this_series_df: pl.DataFrame, window_size: int, th: int, df_
             "awake"
         )
     )
+    count_dropped = l1-len(this_series_df)
+    if count_dropped > 0:
+        _logger.info(f"Dropped {count_dropped} ({count_dropped/l1:.2f}) rows as dark times.")
+    return this_series_df
 
 
 @hydra.main(config_path="../../../config", config_name="prepare_data", version_base="1.2")
@@ -171,7 +178,8 @@ def main(cfg: PrepareDataConfig):
 
         # preprocess
         series_df = (
-            series_lf.with_columns(
+            series_lf
+            .with_columns(
                 pl.col("timestamp").str.to_datetime("%Y-%m-%dT%H:%M:%S%z"),
                 deg_to_rad(pl.col("anglez")).alias("anglez_rad"),
                 (pl.col("anglez") - ANGLEZ_MEAN) / ANGLEZ_STD,

@@ -9,7 +9,7 @@ import torch
 import torch.optim as optim
 from pytorch_lightning import LightningModule
 from pytorch_lightning.loggers import MLFlowLogger
-from transformers import get_cosine_schedule_with_warmup
+from transformers import get_cosine_schedule_with_warmup, get_cosine_with_hard_restarts_schedule_with_warmup
 
 from detect_sleep_states.config import TrainConfig
 from detect_sleep_states.models.base import ModelOutput
@@ -119,33 +119,12 @@ class PLSleepModel(LightningModule):
         self.log("val_score", score, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 
         if loss < self.__best_loss:
+            _logger.info("Saving ...")
             np.save("keys.npy", np.array(keys))
             np.save("labels.npy", labels)
             np.save("preds.npy", preds)
             val_pred_df.write_csv("val_pred_df.csv")
             torch.save(self.model.state_dict(), "best_model.pth")
-
-            logger: MLFlowLogger = self.logger
-            logger.experiment.log_artifact(
-                run_id=logger.run_id,
-                local_path="keys.npy",
-                artifact_path="best/keys.npy"
-            )
-            logger.experiment.log_artifact(
-                run_id=logger.run_id,
-                local_path="labels.npy",
-                artifact_path="best/labels.npy"
-            )
-            logger.experiment.log_artifact(
-                run_id=logger.run_id,
-                local_path="preds.npy",
-                artifact_path="best/preds.npy"
-            )
-            logger.experiment.log_artifact(
-                run_id=logger.run_id,
-                local_path="val_pred_df.csv",
-                artifact_path="best/val_pred_df.csv"
-            )
             self.__best_loss = loss
 
         self.validation_step_outputs.clear()
