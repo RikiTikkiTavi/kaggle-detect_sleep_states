@@ -109,6 +109,7 @@ class PLSleepModel(LightningModule):
         losses = np.array([x[3] for x in self.validation_step_outputs])
         loss = losses.mean()
 
+        # TODO: This thing somehow started to be very slower then training after my changes, fix
         val_pred_df = post_process_for_seg(
             keys=keys,
             preds=preds[:, :, self.cfg.target_labels_idx],
@@ -118,8 +119,8 @@ class PLSleepModel(LightningModule):
         score = event_detection_ap(self.val_event_df.to_pandas(), val_pred_df.to_pandas())
         self.log("val_score", score, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 
+        # TODO: Do once for best model!
         if loss < self.__best_loss:
-            _logger.info("Saving ...")
             np.save("keys.npy", np.array(keys))
             np.save("labels.npy", labels)
             np.save("preds.npy", preds)
