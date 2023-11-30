@@ -79,6 +79,8 @@ class PLSleepModel(LightningModule):
         output = self.model.predict(batch["feature"], self.duration, batch["label"])
         loss = self.loss_fn(output.logits, output.labels)
 
+        loss_value = loss.detach().cpu().item()
+
         output.labels = self.model.correct_labels(output.labels, self.duration)
 
         self.validation_step_outputs.append(
@@ -86,12 +88,12 @@ class PLSleepModel(LightningModule):
                 batch["key"],
                 output.labels.detach().cpu().numpy(),
                 output.preds.detach().cpu().numpy(),
-                loss.detach().item(),
+                loss_value,
             )
         )
         self.log(
             "val_loss",
-            loss.detach().item(),
+            loss_value,
             on_step=False,
             on_epoch=True,
             logger=True,
@@ -109,7 +111,6 @@ class PLSleepModel(LightningModule):
         losses = np.array([x[3] for x in self.validation_step_outputs])
         loss = losses.mean()
 
-        # TODO: This thing somehow started to be very slower then training after my changes, fix
         val_pred_df = post_process_for_seg(
             keys=keys,
             preds=preds[:, :, self.cfg.target_labels_idx],

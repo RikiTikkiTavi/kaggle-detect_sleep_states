@@ -48,6 +48,7 @@ class TrainerConfig:
     monitor: str
     monitor_mode: str
     check_val_every_n_epoch: int
+    gpus: int
 
 
 @dataclass

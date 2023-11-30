@@ -85,9 +85,14 @@ def main(cfg: TrainConfig):
         log_every_n_steps=int(len(datamodule.train_dataloader()) * 0.1),
         sync_batchnorm=True,
         check_val_every_n_epoch=cfg.trainer.check_val_every_n_epoch,
+        devices=cfg.trainer.gpus,
+
     )
 
     trainer.fit(model, datamodule=datamodule)
+
+    if cfg.trainer.debug:
+        return
 
     # load best weights
     _logger.info(f"Loading best weights: {checkpoint_cb.best_model_path}")

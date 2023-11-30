@@ -50,8 +50,7 @@ def proximity_measure(signal1, signal2):
 
     return proximity_with_penalty.mean()  # Return a scalar value
 
-
-class BceLogitsLossWeighted(torch.nn.Module):
+class AdjustedBceLogitsLossWeighted(torch.nn.Module):
     def __init__(
             self,
             class_weights: torch.Tensor,
@@ -94,13 +93,47 @@ class BceLogitsLossWeighted(torch.nn.Module):
 
         return loss
 
+class BceLogitsLossWeighted(torch.nn.Module):
+    def __init__(
+            self,
+            class_weights: torch.Tensor,
+            pos_weight: torch.Tensor
+    ):
+        super().__init__()
+        self.class_weights = class_weights
+        self.pos_weight = pos_weight
+
+    def forward(self, input: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        """
+
+        :param x1: shape (N, L, C)
+        :param x2: shape (N, L, C)
+        :return:
+        """
+
+        loss = torch.tensor(0.0, dtype=input.dtype, device=input.device)
+
+        if self.class_weights.device != input.device:
+            self.class_weights = self.class_weights.to(input.device)
+
+        if self.pos_weight.device != input.device:
+            self.pos_weight = self.pos_weight.to(input.device)
+
+        for i in range(input.size(2)):
+            loss += self.class_weights[i] * torch.nn.functional.binary_cross_entropy_with_logits(
+                input[:, :, i],
+                target[:, :, i],
+                pos_weight=self.pos_weight[i]
+            )
+
+        return loss
+
 
 def get_loss(cfg: LossConfig) -> Callable[[torch.Tensor, torch.Tensor], torch.Tensor]:
     if cfg.name == "BCE":
         return BceLogitsLossWeighted(
             class_weights=torch.tensor(cfg.params["class_weight"], dtype=torch.float32),
             pos_weight=torch.tensor(cfg.params["pos_weight"], dtype=torch.float32),
-            sparsity_loss=SignalSparsityLoss(a=0.0001, b=0.5)
         )
     elif cfg.name == "focal":
         return FocalLoss(**cfg.params)
