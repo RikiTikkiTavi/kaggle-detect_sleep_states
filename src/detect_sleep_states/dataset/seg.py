@@ -48,7 +48,7 @@ class SegTrainDataset(Dataset):
         self.cfg = cfg
         # id | night | onset | wakeup
         self.event_df: pd.DataFrame = (
-            event_df.pivot(index=["series_id", "night"], columns="event", values="step")
+            event_df.pivot(index=["series_id", "night"], columns="event", values="step", aggregate_function="first")
             .drop_nulls()
             .to_pandas()
         )

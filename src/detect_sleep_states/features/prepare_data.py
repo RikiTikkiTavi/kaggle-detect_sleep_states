@@ -46,6 +46,7 @@ ENMO_STD = 0.101829
 
 _logger = logging.getLogger(__name__)
 
+
 def to_coord(x: pl.Expr, max_: int, name: str) -> list[pl.Expr]:
     rad = 2 * np.pi * x / max_
     x_sin = rad.sin()
@@ -107,55 +108,69 @@ def save_each_series(this_series_df: pl.DataFrame, columns: list[str], output_di
         np.save(output_dir / f"{col_name}.npy", x)
 
 
-def drop_dark_times(this_series_df: pl.DataFrame, window_size: int, th: int, df_train_events: pl.DataFrame):
-    l1 = len(this_series_df)
-    govno = this_series_df.get_column("anglez").to_pandas()
-    govno_rolling = govno.rolling(FixedForwardWindowIndexer(window_size=window_size),
-                                  min_periods=window_size).max().rename("anglez_forward_max")
+def drop_dark_times(this_series_df: pl.DataFrame, window_size: int, th: int, df_train_events: pd.DataFrame):
+    train_series = this_series_df.to_pandas()
+    l1 = train_series.shape[0]
+    train_events = df_train_events
 
-    this_series_df = (
-        this_series_df
-        .with_columns(
-            pl.col("anglez").rolling_max(window_size=window_size, min_periods=window_size).alias("anglez_backward_max"),
-            pl.from_pandas(govno_rolling)
-        )
-        .join(df_train_events.select([pl.col("step", "awake")]), on="step", how="left")
-        .with_columns(
-            pl.col("awake").fill_null(strategy="backward"),
-        )
-    )
-    this_series_df = (
-        this_series_df
-        .with_columns(
-            pl
-            .when((pl.col("anglez_backward_max") < th) | (pl.col("anglez_forward_max") < th))
-            .then(2)
-            .otherwise(pl.col("awake"))
-            .alias("awake")
-            .fill_null(1)
-        )
-        .select(
-            pl.col("series_id"),
-            pl.col("anglez"),
-            pl.col("enmo"),
-            pl.col("timestamp"),
-            pl.col("step"),
-            pl.col("anglez_rad"),
-            pl.col("awake") != 2,
-        )
-        .drop(
-            "awake"
-        )
-    )
-    count_dropped = l1-len(this_series_df)
-    if count_dropped > 0:
-        _logger.info(f"Dropped {count_dropped} ({count_dropped/l1:.2f}) rows as dark times.")
-    return this_series_df
+    # cleaning etc.
+    train_events = train_events.dropna()
+    train_events["step"] = train_events["step"].astype("int")
+    train_events["awake"] = train_events["event"].replace({"onset": 1, "wakeup": 0})
+
+    train = pd.merge(train_series, train_events[['step', 'awake']], on='step', how='left')
+    train["awake"] = train["awake"].bfill(axis='rows')
+
+    train['anglez_backward_max'] = train_series['anglez'].rolling(window=window_size, min_periods=window_size).max()
+    train['anglez_forward_max'] = train_series['anglez'].rolling(
+        FixedForwardWindowIndexer(window_size=window_size),
+        min_periods=window_size
+    ).max()
+    cond = (train.anglez_backward_max < th) | (train.anglez_forward_max < th)
+    train.loc[cond, 'awake'] = 2
+    # Result: the last event is always a "wakeup"
+    train['awake'] = train['awake'].fillna(1)  # awake
+    train["awake"] = train["awake"].astype("int")
+    train = train.loc[train["awake"] != 2].drop(["awake", 'anglez_backward_max', 'anglez_forward_max'], axis="columns")
+    l2 = len(train)
+    if l1 - l2 > 0:
+        _logger.info(f"Dropped {l1 - l2} ({(l1 - l2) / l1}) rows")
+    return polars.from_pandas(train)
+
+
+def process_events_df(df_events: pd.DataFrame) -> pd.DataFrame:
+    # *** Modify some Events ***
+    #
+    # --- 655f19eabf1e : Remove the first night 3 onset:
+    train_events = df_events.drop([5362], axis=0)
+    #
+    # --- 8a306e0890c0 : Remove the extra night 11 onset
+    train_events = train_events.drop([7358], axis=0)
+    #
+    # --- c3072a759efb : Insert the missing onset for night 20, at 338000
+    # Want it at index 10132
+    # Add 1 to current 10132 and ones above, put it where desired using float index:
+    train_events.loc[10131.5] = ['c3072a759efb', 20, 'onset', 339000,
+                                 '2018-03-18T23:00:00-0500']
+    # Re-do integer indices
+    train_events = train_events.sort_index().reset_index(drop=True)
+    #
+    # --- c6788e579967 : Remove the extra onset for night 20
+    train_events = train_events.drop([10348], axis=0)
+    # Re-do integer indices
+    train_events = train_events.sort_index().reset_index(drop=True)
+
+    df_events.dropna(inplace=True)
+
+    return train_events
 
 
 @hydra.main(config_path="../../../config", config_name="prepare_data", version_base="1.2")
 def main(cfg: PrepareDataConfig):
     processed_dir: Path = Path(cfg.dir.processed_dir) / cfg.phase
+
+    train_events_df = process_events_df(pd.read_csv(Path(cfg.dir.data_dir) / "train_events.csv"))
+    train_events_df.to_csv(Path(cfg.dir.processed_dir) / "train_events.csv")
 
     if processed_dir.exists():
         shutil.rmtree(processed_dir)
@@ -190,36 +205,18 @@ def main(cfg: PrepareDataConfig):
                     pl.col("series_id"),
                     pl.col("anglez"),
                     pl.col("enmo"),
-                    pl.col("timestamp"),
                     pl.col("step"),
+                    pl.col("timestamp"),
                     pl.col("anglez_rad"),
                 ]
             )
             .collect(streaming=True)
             .sort(by=["series_id", "timestamp"])
         )
-
-        train_events_df = pl.from_pandas(
-            pd.read_csv(Path(cfg.dir.data_dir) / "train_events.csv")
-            .dropna()
-            .astype({
-                "step": np.uint32
-            })
-        ).with_columns(
-            pl.col("event").map_dict({"onset": 1, "wakeup": 0}).alias("awake")
-        )
-
         n_unique = series_df.get_column("series_id").n_unique()
 
     with trace("Save features"):
         for series_id, this_series_df in tqdm(series_df.group_by("series_id"), total=n_unique):
-            train_events_df_series = train_events_df.filter(pl.col("series_id") == series_id)
-            this_series_df = drop_dark_times(
-                this_series_df,
-                window_size=cfg.dark_drop_window_size,
-                th=cfg.dark_drop_th,
-                df_train_events=train_events_df_series
-            )
             this_series_df = add_feature(this_series_df, period=timedelta(minutes=cfg.rolling_var_period))
             series_dir = processed_dir / series_id  # type: ignore
             save_each_series(this_series_df, FEATURE_NAMES, series_dir)

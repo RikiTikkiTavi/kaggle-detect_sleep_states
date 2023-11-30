@@ -27,6 +27,7 @@ _logger = logging.getLogger(__file__)
 
 @hydra.main(config_path="../../config", config_name="train", version_base="1.2")
 def main(cfg: TrainConfig):
+
     seed_everything(cfg.seed)
 
     # init data module
@@ -59,8 +60,7 @@ def main(cfg: TrainConfig):
         experiment_name=cfg.exp_name,
         save_dir=cfg.dir.mlflow_store_dir,
         run_name=cfg.run_name,
-        log_model=True,
-        artifact_location=str(Path.cwd())
+        log_model=True
     )
 
     pl_logger.log_hyperparams(cfg)

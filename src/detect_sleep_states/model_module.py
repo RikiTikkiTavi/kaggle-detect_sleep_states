@@ -4,6 +4,7 @@ from typing import Optional
 
 import mlflow
 import numpy as np
+import pandas as pd
 import polars as pl
 import torch
 import torch.optim as optim
@@ -26,6 +27,7 @@ _logger = logging.getLogger(__name__)
 
 
 class PLSleepModel(LightningModule):
+    val_event_df: pd.DataFrame
     def __init__(
             self,
             cfg: TrainConfig,
@@ -36,7 +38,7 @@ class PLSleepModel(LightningModule):
     ):
         super().__init__()
         self.cfg = cfg
-        self.val_event_df = val_event_df
+        self.val_event_df = val_event_df.to_pandas()
         num_timesteps = nearest_valid_size(int(duration * cfg.upsample_rate), cfg.downsample_rate)
         self.model = get_model(
             cfg,
@@ -78,26 +80,24 @@ class PLSleepModel(LightningModule):
     def validation_step(self, batch, batch_idx):
         output = self.model.predict(batch["feature"], self.duration, batch["label"])
         loss = self.loss_fn(output.logits, output.labels)
-
-        loss_value = loss.detach().cpu().item()
+        self.log(
+            "val_loss",
+            loss,
+            on_step=False,
+            on_epoch=True,
+            logger=True,
+            prog_bar=True,
+        )
 
         output.labels = self.model.correct_labels(output.labels, self.duration)
 
         self.validation_step_outputs.append(
             (
                 batch["key"],
-                output.labels.detach().cpu().numpy(),
-                output.preds.detach().cpu().numpy(),
-                loss_value,
+                output.labels.cpu().numpy(),
+                output.preds.cpu().numpy(),
+                loss.item(),
             )
-        )
-        self.log(
-            "val_loss",
-            loss_value,
-            on_step=False,
-            on_epoch=True,
-            logger=True,
-            prog_bar=True,
         )
 
         return loss
@@ -111,13 +111,14 @@ class PLSleepModel(LightningModule):
         losses = np.array([x[3] for x in self.validation_step_outputs])
         loss = losses.mean()
 
-        val_pred_df = post_process_for_seg(
+        val_pred_df: pd.DataFrame = post_process_for_seg(
             keys=keys,
             preds=preds[:, :, self.cfg.target_labels_idx],
             score_th=self.cfg.pp.score_th,
             distance=self.cfg.pp.distance,
         )
-        score = event_detection_ap(self.val_event_df.to_pandas(), val_pred_df.to_pandas())
+        # TODO: Somehow became slower despite i haven't touched it
+        score = event_detection_ap(self.val_event_df, val_pred_df.to_pandas())
         self.log("val_score", score, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 
         # TODO: Do once for best model!

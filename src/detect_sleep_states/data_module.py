@@ -70,7 +70,7 @@ class SleepDataModule(LightningDataModule):
         self.cfg = cfg
         self.data_dir = Path(cfg.dir.data_dir)
         self.processed_dir = Path(cfg.dir.processed_dir)
-        self.event_df = pl.read_csv(self.data_dir / "train_events.csv").drop_nulls()
+        self.event_df = pl.read_csv(self.processed_dir / "train_events.csv").drop_nulls()
         self.train_event_df = self.event_df.filter(
             pl.col("series_id").is_in(self.cfg.split.train_series_ids)
         )
