@@ -56,6 +56,7 @@ class DatasetConfig:
     name: str
     batch_size: int
     num_workers: int
+    multiprocessing_context: str
     radius: int
     sigma: int
     bg_sampling_rate: float

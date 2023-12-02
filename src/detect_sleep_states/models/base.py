@@ -16,11 +16,11 @@ class ModelOutput:
 class BaseModel(nn.Module):
 
     def forward(
-        self,
-        x: torch.Tensor,
-        labels: Optional[torch.Tensor] = None,
-        do_mixup: bool = False,
-        do_cutmix: bool = False,
+            self,
+            x: torch.Tensor,
+            labels: Optional[torch.Tensor] = None,
+            do_mixup: bool = False,
+            do_cutmix: bool = False,
     ) -> ModelOutput:
         """Forward pass of the model.
 
@@ -45,10 +45,10 @@ class BaseModel(nn.Module):
 
     @torch.no_grad()
     def predict(
-        self,
-        x: torch.Tensor,
-        org_duration: int,
-        labels: Optional[torch.Tensor] = None,
+            self,
+            x: torch.Tensor,
+            org_duration: int,
+            labels: Optional[torch.Tensor] = None,
     ) -> ModelOutput:
         output = self.forward(x, labels, False, False)
         output.preds = self.logits_to_proba_per_step(output.logits, org_duration)
@@ -56,11 +56,11 @@ class BaseModel(nn.Module):
 
     @abstractmethod
     def _forward(
-        self,
-        x: torch.Tensor,
-        labels: Optional[torch.Tensor] = None,
-        do_mixup: bool = False,
-        do_cutmix: bool = False,
+            self,
+            x: torch.Tensor,
+            labels: Optional[torch.Tensor] = None,
+            do_mixup: bool = False,
+            do_cutmix: bool = False,
     ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """Forward pass of the model.
 
@@ -77,9 +77,9 @@ class BaseModel(nn.Module):
 
     @abstractmethod
     def logits_to_proba_per_step(
-        self,
-        logits: torch.Tensor,
-        org_duration: int,
+            self,
+            logits: torch.Tensor,
+            org_duration: int,
     ) -> torch.Tensor:
         """Convert logits to probabilities per step.
 
@@ -94,9 +94,9 @@ class BaseModel(nn.Module):
 
     @abstractmethod
     def correct_labels(
-        self,
-        labels: torch.Tensor,
-        org_duration: int,
+            self,
+            labels: torch.Tensor,
+            org_duration: int,
     ) -> torch.Tensor:
         """Correct labels to match the output of the model.
 

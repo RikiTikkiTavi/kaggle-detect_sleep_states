@@ -1,3 +1,5 @@
+import typing
+
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -10,13 +12,16 @@ def plot_predictions_chunk(
         predictions: np.ndarray,
         features: np.ndarray,
         labels: np.ndarray,
-        cfg: detect_sleep_states.config.TrainConfig
-):
+        cfg: detect_sleep_states.config.TrainConfig,
+        ax: typing.Optional[plt.Axes] = None
+) -> tuple[plt.Figure, plt.Axes]:
     sns.set_style("darkgrid")
 
     fig: plt.Figure
-    ax: plt.Axes
-    fig, ax = plt.subplots(figsize=(12, 6))
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 6))
+    else:
+        fig = ax.get_figure()
 
     colors = sns.color_palette()
 
@@ -55,9 +60,8 @@ def plot_predictions_chunk(
     )
     ax_prob.set_ylim((-1.05, 1.05))
 
-
-    labels[:, 0][labels[:, 0] == 1] = -1 # asleep
-    labels[:, 0][labels[:, 0] == 0] = 1 # awake
+    labels[:, 0][labels[:, 0] == 1] = -1  # asleep
+    labels[:, 0][labels[:, 0] == 0] = 1  # awake
     ax_prob.plot(
         labels[:, 0],
         color="black",

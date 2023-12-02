@@ -108,6 +108,7 @@ class SleepDataModule(LightningDataModule):
             pin_memory=True,
             persistent_workers=True,
             drop_last=True,
+            multiprocessing_context=self.cfg.dataset.multiprocessing_context,
         )
         return train_loader
 
@@ -124,5 +125,6 @@ class SleepDataModule(LightningDataModule):
             num_workers=self.cfg.dataset.num_workers,
             pin_memory=True,
             persistent_workers=True,
+            multiprocessing_context=self.cfg.dataset.multiprocessing_context,
         )
         return valid_loader

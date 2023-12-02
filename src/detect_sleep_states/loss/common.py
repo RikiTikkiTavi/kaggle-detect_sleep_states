@@ -29,6 +29,7 @@ def get_loss(cfg: LossConfig) -> Callable[[torch.Tensor, torch.Tensor], torch.Te
         return detect_sleep_states.loss.focal.FocalLoss(
             gamma=cfg.params["gamma"],
             alpha=cfg.params["alpha"],
+            pos_weight=cfg.params["pos_weight"]
         )
     else:
         raise Exception(f"Loss '{cfg.name}' is not supported yet.")

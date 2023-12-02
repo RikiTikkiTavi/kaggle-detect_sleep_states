@@ -15,12 +15,16 @@ from pytorch_lightning.callbacks import (
     Callback
 )
 from pytorch_lightning.loggers import MLFlowLogger
+from lightning.pytorch.accelerators import find_usable_cuda_devices
 
 from detect_sleep_states.config import TrainConfig
 from detect_sleep_states.data_module import SleepDataModule
 from detect_sleep_states.model_module import PLSleepModel
 
 import detect_sleep_states.plot.plot_predictions
+import detect_sleep_states.introspect_model
+
+from hydra.core.hydra_config import HydraConfig
 
 _logger = logging.getLogger(__file__)
 
@@ -66,6 +70,18 @@ def main(cfg: TrainConfig):
     pl_logger.log_hyperparams(cfg)
 
     _logger.info("Setting up Trainer ...")
+
+    hydra_config = HydraConfig.get()
+    if hydra_config.mode == "MULTIRUN":
+        usable_gpu_devices = find_usable_cuda_devices(-1)
+        gpus = [
+            usable_gpu_devices[hydra_config.job.num % len(usable_gpu_devices) + i]
+            for i in range(cfg.trainer.gpus)
+        ]
+        _logger.info(f"Selected gpus {gpus} for job number {hydra_config.job.num}.")
+    else:
+        gpus = cfg.trainer.gpus
+
     trainer = Trainer(
         # env
         default_root_dir=Path.cwd(),
@@ -85,8 +101,7 @@ def main(cfg: TrainConfig):
         log_every_n_steps=int(len(datamodule.train_dataloader()) * 0.1),
         sync_batchnorm=True,
         check_val_every_n_epoch=cfg.trainer.check_val_every_n_epoch,
-        devices=cfg.trainer.gpus,
-
+        devices=gpus,
     )
 
     trainer.fit(model, datamodule=datamodule)
@@ -104,46 +119,15 @@ def main(cfg: TrainConfig):
         num_classes=len(cfg.labels),
         duration=cfg.duration,
     )
-    weights_path = Path.cwd() / "model_weights.pth"
-    _logger.info(f"Saving best weights: {weights_path} ...")
-    torch.save(model.model.state_dict(), weights_path)
 
-    _logger.info("Plotting predictions ...")
-    keys = np.load("keys.npy")
-    predictions = np.load("preds.npy")
-    labels = np.load("labels.npy")
-    val_pred_df = pd.read_csv("val_pred_df.csv")
-
-    df_keys = pd.DataFrame(
-        np.char.split(keys, "_").tolist(),
-        columns=["series_id", "chunk_id"]
-    ).reset_index(names=["key_i"])
-
-    for n_series, series_id in enumerate(val_pred_df.groupby("series_id")["score"].sum().sort_values().index):
-
-        if n_series >= cfg.n_chunks_visualize:
-            break
-
-        for i in df_keys.loc[df_keys["series_id"] == series_id]["key_i"]:
-            fig, ax = detect_sleep_states.plot.plot_predictions.plot_predictions_chunk(
-                predictions=predictions[i],
-                features=datamodule.valid_chunk_features[keys[i]],
-                labels=labels[i],
-                cfg=cfg
-            )
-            if np.any(labels[i][:, 1] > 1 / 2):
-                artifact_folder = "plots/val/predictions/onset"
-            elif np.any(labels[i][:, 2] > 1 / 2):
-                artifact_folder = "plots/val/predictions/wakeup"
-            else:
-                artifact_folder = "plots/val/predictions/bg"
-
-            pl_logger.experiment.log_figure(
-                run_id=pl_logger.run_id,
-                figure=fig,
-                artifact_file=f"{artifact_folder}/{n_series}-{keys[i]}.png"
-            )
-            plt.close(fig)
+    _logger.info("Introspecting model ...")
+    detect_sleep_states.introspect_model.introspect_model(
+        model_module=model,
+        data_module=datamodule,
+        cfg=cfg,
+        logger=pl_logger,
+        device=torch.device(type="cuda", index=0)
+    )
 
     return
 

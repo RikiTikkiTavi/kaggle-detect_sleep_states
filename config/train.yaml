@@ -1,13 +1,7 @@
 # ---------- Overriding hydra default configs ----------
 hydra:
   launcher:
-    timeout_min: 120
-    name: dss-${hydra.job.name}-${exp_name}-${run_name}
-    additional_parameters:
-      error: ${hydra.run.dir}/slurm-out.err
-      output: ${hydra.run.dir}/slurm-out.log
-      mem: 50GB
-    account: p_scads
+    n_jobs: 4
 
   job:
     name: train
@@ -27,7 +21,7 @@ defaults:
   - decoder: UNet1DDecoder
   - split: fold_0
   - loss: BCE
-  - override hydra/launcher: submitit_slurm
+  - override hydra/launcher: joblib
 
 seed: 42
 exp_name: dummy
