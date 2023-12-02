@@ -1,8 +1,11 @@
 import torch
 import torch.nn as nn
 from torch import Tensor
+import torch.nn.functional as F
 from torch.nn.functional import log_softmax, nll_loss
 from typing import Union, Optional, Sequence
+
+from torchvision.ops.focal_loss import sigmoid_focal_loss
 
 
 class FocalLoss(nn.Module):
@@ -19,7 +22,7 @@ class FocalLoss(nn.Module):
     """
 
     def __init__(self,
-                 alpha: Optional[Tensor] = None,
+                 alpha: list[float],
                  gamma: float = 0.,
                  reduction: str = 'mean',
                  ignore_index: int = -100):
@@ -44,9 +47,6 @@ class FocalLoss(nn.Module):
         self.ignore_index = ignore_index
         self.reduction = reduction
 
-        self.nll_loss = nn.NLLLoss(
-            weight=alpha, reduction='none', ignore_index=ignore_index)
-
     def __repr__(self):
         arg_keys = ['alpha', 'gamma', 'ignore_index', 'reduction']
         arg_vals = [self.__dict__[k] for k in arg_keys]
@@ -60,41 +60,16 @@ class FocalLoss(nn.Module):
         :param y: x: shape(N, L, C)
         :return: tensor of shape (N)
         """
-        if x.ndim > 2:
-            # (N, d1, C) -> (N, C, d1)
-            x = torch.transpose(x, 1, 2)
-            # (N, C, d1, d2, ..., dK) --> (N * d1 * ... * dK, C)
-            c = x.shape[1]
-            x = x.permute(0, *range(2, x.ndim), 1).reshape(-1, c)
-            # (N, d1, d2, ..., dK) --> (N * d1 * ... * dK,)
-            y = y.view(-1)
+        loss = torch.tensor(0, device=x.device, dtype=torch.float32)
 
-        unignored_mask = y != self.ignore_index
-        y = y[unignored_mask]
-        if len(y) == 0:
-            return torch.tensor(0.)
-        x = x[unignored_mask]
-
-        # compute weighted cross entropy term: -alpha * log(pt)
-        # (alpha is already part of self.nll_loss)
-        log_p = F.log_softmax(x, dim=-1)
-        ce = self.nll_loss(log_p, y)
-
-        # get true class column from each row
-        all_rows = torch.arange(len(x))
-        log_pt = log_p[all_rows, y]
-
-        # compute focal term: (1 - pt)^gamma
-        pt = log_pt.exp()
-        focal_term = (1 - pt)**self.gamma
-
-        # the full loss: -alpha * ((1 - pt)^gamma) * log(pt)
-        loss = focal_term * ce
-
-        if self.reduction == 'mean':
-            loss = loss.mean()
-        elif self.reduction == 'sum':
-            loss = loss.sum()
+        for class_i, class_alpha in enumerate(self.alpha):
+            loss += sigmoid_focal_loss(
+                x[:, :, class_i],
+                y[:, :, class_i],
+                alpha=class_alpha,
+                gamma=self.gamma,
+                reduction=self.reduction
+            )
 
         return loss
 

@@ -2,3 +2,7 @@ name: focal
 params:
   gamma: 0.5
   reduction: "mean"
+  alpha:
+    - 0.5
+    - 1
+    - 1

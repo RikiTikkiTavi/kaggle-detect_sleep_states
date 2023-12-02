@@ -1,19 +1,13 @@
 # ---------- Overriding hydra default configs ----------
 hydra:
   launcher:
-    #timeout_min: 120
-    #cpus_per_task: 12
-    #gpus_per_node: 1
-    #tasks_per_node: 1
-    #nodes: 1
-    #name: dss-${hydra.job.name}-${exp_name}-${run_name}
-    #partition: alpha
-    #gres: gpu:1
-    #mem_per_cpu: 7GB
-    #additional_parameters:
-    #  error: ${hydra.run.dir}/slurm-out.err
-    #  output: ${hydra.run.dir}/slurm-out.log
-    #account: p_scads
+    timeout_min: 120
+    name: dss-${hydra.job.name}-${exp_name}-${run_name}
+    additional_parameters:
+      error: ${hydra.run.dir}/slurm-out.err
+      output: ${hydra.run.dir}/slurm-out.log
+      mem: 50GB
+    account: p_scads
 
   job:
     name: train
@@ -26,20 +20,20 @@ hydra:
 
 defaults:
   - _self_
-  - dir: alpha-singularity
+  - dir: alpha
   - dataset: seg
   - model: Spec2DCNN
   - feature_extractor: CNNSpectrogram
   - decoder: UNet1DDecoder
   - split: fold_0
   - loss: BCE
-  # - override hydra/launcher: submitit_slurm
+  - override hydra/launcher: submitit_slurm
 
 seed: 42
 exp_name: dummy
 run_name: dummy
 batch_size: 32
-num_workers: 12
+num_workers: 6
 duration: 5760
 downsample_rate: 2
 upsample_rate: 1
@@ -70,7 +64,7 @@ pp:
 
 # label
 labels:
-  - "awake"
+  - "asleep"
   - "event_onset"
   - "event_wakeup"
 
