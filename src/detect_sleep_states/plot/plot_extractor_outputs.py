@@ -18,7 +18,7 @@ def plot_cnn_extractor_outputs_chunk(
     fig: plt.Figure
     ax: plt.Axes
     n_rows = extractor_outputs.shape[0] + 1
-    height = n_rows * 6
+    height = n_rows * 5
     fig, axs = plt.subplots(figsize=(12, height), ncols=1, nrows=n_rows)
     axs = axs.flatten()
 

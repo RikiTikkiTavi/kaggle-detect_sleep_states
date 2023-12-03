@@ -3,6 +3,7 @@ from pathlib import Path
 
 import hydra
 import matplotlib.pyplot as plt
+import mlflow
 import numpy as np
 import pandas as pd
 import torch
@@ -32,7 +33,6 @@ _logger = logging.getLogger(__file__)
 
 @hydra.main(config_path="../../config", config_name="train", version_base="1.2")
 def main(cfg: TrainConfig):
-
     seed_everything(cfg.seed)
 
     # init data module
@@ -113,7 +113,7 @@ def main(cfg: TrainConfig):
 
     # load best weights
     _logger.info(f"Loading best weights: {checkpoint_cb.best_model_path}")
-    model: PLSleepModel = PLSleepModel.load_from_checkpoint(
+    best_model: PLSleepModel = PLSleepModel.load_from_checkpoint(
         checkpoint_cb.best_model_path,
         cfg=cfg,
         val_event_df=datamodule.valid_event_df,
@@ -121,10 +121,13 @@ def main(cfg: TrainConfig):
         num_classes=len(cfg.labels),
         duration=cfg.duration,
     )
+    pl_logger.log_metrics({"best_val_score": checkpoint_cb.best_model_score.item()})
+    torch.save(best_model.state_dict(), Path.cwd() / "best_model.pth")
+    pl_logger.experiment.log_artifact(pl_logger.run_id, local_path=Path.cwd() / "best_model.pth", artifact_path="model")
 
     _logger.info("Introspecting model ...")
     detect_sleep_states.introspect_model.introspect_model(
-        model_module=model,
+        model_module=best_model,
         data_module=datamodule,
         cfg=cfg,
         logger=pl_logger,

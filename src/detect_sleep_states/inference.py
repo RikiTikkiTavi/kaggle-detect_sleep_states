@@ -8,13 +8,13 @@ from pytorch_lightning import seed_everything
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.conf import InferenceConfig
-from src.datamodule import load_chunk_features
-from src.dataset.common import get_test_ds
-from src.models.base import BaseModel
-from src.models.common import get_model
-from src.utils.common import nearest_valid_size, trace
-from src.utils.post_process import post_process_for_seg
+from detect_sleep_states.config import InferenceConfig
+from detect_sleep_states.data_module import load_chunk_features
+from detect_sleep_states.dataset.common import get_test_ds
+from detect_sleep_states.models.base import BaseModel
+from detect_sleep_states.models.common import get_model
+from detect_sleep_states.utils.common import nearest_valid_size, trace
+from detect_sleep_states.utils.post_process import post_process_for_seg
 
 
 def load_model(cfg: InferenceConfig) -> BaseModel:
@@ -28,12 +28,9 @@ def load_model(cfg: InferenceConfig) -> BaseModel:
     )
 
     # load weights
-    if cfg.weight is not None:
-        weight_path = (
-            Path(cfg.dir.model_dir) / cfg.weight.exp_name / cfg.weight.run_name / "best_model.pth"
-        )
-        model.load_state_dict(torch.load(weight_path))
-        print('load weight from "{}"'.format(weight_path))
+    model.load_state_dict(torch.load(cfg.checkpoint_path))
+    print('load weight from "{}"'.format(cfg.checkpoint_path))
+
     return model
 
 
@@ -108,7 +105,7 @@ def make_submission(
     return sub_df
 
 
-@hydra.main(config_path="conf", config_name="inference", version_base="1.2")
+@hydra.main(config_path="../../config", config_name="inference", version_base="1.2")
 def main(cfg: InferenceConfig):
     seed_everything(cfg.seed)
 

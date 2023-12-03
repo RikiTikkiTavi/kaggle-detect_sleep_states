@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import polars
 import polars as pl
+from numba import jit
 from pandas.core.indexers.objects import FixedForwardWindowIndexer
 from tqdm import tqdm
 
@@ -36,7 +37,8 @@ FEATURE_NAMES = [
     "day_of_week_sin",
     "day_of_week_cos",
     "anglez_total_variation",
-    "enmo_total_variation"
+    "enmo_total_variation",
+    "is_removed"
 ]
 
 ANGLEZ_MEAN = -8.810476
@@ -77,24 +79,67 @@ def rolling_total_variation(series_df: pl.DataFrame, period: timedelta) -> tuple
             df_series_rolling_var.get_column("enmo_total_variation"))
 
 
+@jit(nopython=True)
+def calculate_removed_periods(
+        anglez: np.ndarray,
+        window_size: int,
+        step: int
+) -> np.ndarray:
+    g_size = window_size
+    step = step
+    is_removed = np.repeat(False, len(anglez))
+    for first_window_start in range(2 * g_size, len(anglez) - g_size, g_size):
+
+        first_window_end = first_window_start + g_size
+
+        for second_window_start in range(0, first_window_start - g_size, step):
+
+            second_window_end = second_window_start + g_size
+
+            if np.all(
+                    anglez[first_window_start:first_window_end] == anglez[second_window_start:second_window_end]):
+                is_removed[first_window_start:first_window_end] = True
+                is_removed[second_window_start:second_window_end] = True
+    return is_removed
+
+
 def add_feature(
         series_df: pl.DataFrame,
-        period: timedelta
+        cfg: PrepareDataConfig,
+        period: timedelta,
+        is_removed_window_size: int,
+        is_removed_step_size: int
 ) -> pl.DataFrame:
+
+    feature_expressions = []
+
+    if "day_of_week_sin" in cfg.features and "day_of_week_cos" in cfg.features:
+        feature_expressions.extend(
+            to_coord(pl.col("timestamp").dt.weekday(), 7, "day_of_week")
+        )
+    if "hour_sin" in cfg.features and "hour_cos" in cfg.features:
+        feature_expressions.extend(
+            to_coord(pl.col("timestamp").dt.hour(), 24, "hour")
+        )
+    if "minute_sin" in cfg.features and "minute_cos" in cfg.features:
+        feature_expressions.extend(
+            to_coord(pl.col("timestamp").dt.minute(), 60, "minute")
+        )
+    if "is_removed" in cfg.features:
+        is_removed = calculate_removed_periods(
+            anglez=series_df.get_column("anglez").to_numpy(),
+            window_size=is_removed_window_size,
+            step=is_removed_step_size
+        ).astype(int)
+        feature_expressions.append(pl.Series(name="is_removed", values=is_removed))
+    if "anglez_total_variation" in cfg.features and "enmo_total_variation" in cfg.features:
+        feature_expressions.extend(rolling_total_variation(series_df, period))
+
     series_df = (
         series_df
         .set_sorted(column="timestamp")
-        .with_columns(
-            *to_coord(pl.col("timestamp").dt.weekday(), 7, "day_of_week"),
-            *to_coord(pl.col("timestamp").dt.hour(), 24, "hour"),
-            *to_coord(pl.col("timestamp").dt.month(), 12, "month"),
-            *to_coord(pl.col("timestamp").dt.minute(), 60, "minute"),
-            pl.col("step") / pl.count("step"),
-            pl.col('anglez_rad').sin().alias('anglez_sin'),
-            pl.col('anglez_rad').cos().alias('anglez_cos'),
-            *rolling_total_variation(series_df, period)
-        )
-        .select("series_id", *FEATURE_NAMES)
+        .with_columns(*feature_expressions)
+        .select("series_id", *cfg.features)
     )
 
     return series_df
@@ -104,7 +149,7 @@ def save_each_series(this_series_df: pl.DataFrame, columns: list[str], output_di
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for col_name in columns:
-        x = this_series_df.get_column(col_name).to_numpy(zero_copy_only=True)
+        x = this_series_df.get_column(col_name).to_numpy()
         np.save(output_dir / f"{col_name}.npy", x)
 
 
@@ -169,8 +214,9 @@ def process_events_df(df_events: pd.DataFrame) -> pd.DataFrame:
 def main(cfg: PrepareDataConfig):
     processed_dir: Path = Path(cfg.dir.processed_dir) / cfg.phase
 
-    train_events_df = process_events_df(pd.read_csv(Path(cfg.dir.data_dir) / "train_events.csv"))
-    train_events_df.to_csv(Path(cfg.dir.processed_dir) / "train_events.csv")
+    if cfg.phase == "train":
+        train_events_df = process_events_df(pd.read_csv(Path(cfg.dir.data_dir) / "train_events.csv"))
+        train_events_df.to_csv(Path(cfg.dir.processed_dir) / "train_events.csv")
 
     if processed_dir.exists():
         shutil.rmtree(processed_dir)
@@ -217,9 +263,15 @@ def main(cfg: PrepareDataConfig):
 
     with trace("Save features"):
         for series_id, this_series_df in tqdm(series_df.group_by("series_id"), total=n_unique):
-            this_series_df = add_feature(this_series_df, period=timedelta(minutes=cfg.rolling_var_period))
+            this_series_df = add_feature(
+                this_series_df,
+                cfg=cfg,
+                period=timedelta(minutes=cfg.rolling_var_period),
+                is_removed_step_size=2,
+                is_removed_window_size=720
+            )
             series_dir = processed_dir / series_id  # type: ignore
-            save_each_series(this_series_df, FEATURE_NAMES, series_dir)
+            save_each_series(this_series_df, cfg.features, series_dir)
 
 
 if __name__ == "__main__":

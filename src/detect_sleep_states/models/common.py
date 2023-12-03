@@ -18,6 +18,7 @@ from detect_sleep_states.models.feature_extractor.panns import PANNsFeatureExtra
 from detect_sleep_states.models.feature_extractor.spectrogram import SpecFeatureExtractor
 from detect_sleep_states.models.spec1D import Spec1D
 from detect_sleep_states.models.spec2Dcnn import Spec2DCNN
+from detect_sleep_states.models.transformer1D import Transformer1D
 
 FEATURE_EXTRACTOR_TYPE = Union[
     CNNSpectrogram, PANNsFeatureExtractor, LSTMFeatureExtractor, SpecFeatureExtractor
@@ -156,6 +157,13 @@ def get_model(
             mixup_alpha=cfg.aug.mixup_alpha,
             cutmix_alpha=cfg.aug.cutmix_alpha,
             **cfg.model.params,
+        )
+    elif cfg.model.name == "Transformer1D":
+        decoder = get_decoder(cfg.decoder, n_channels=feature_dim, n_classes=n_classes, num_timesteps=num_timesteps)
+        model = Transformer1D(
+            decoder=decoder,
+            mixup_alpha=cfg.aug.mixup_alpha,
+            cutmix_alpha=cfg.aug.cutmix_alpha
         )
     else:
         raise ValueError(f"Invalid model name: {cfg.model.name}")

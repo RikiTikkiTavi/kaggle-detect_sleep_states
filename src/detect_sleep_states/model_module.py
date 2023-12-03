@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 import mlflow
 import numpy as np
@@ -119,6 +119,10 @@ class PLSleepModel(LightningModule):
         self.log("val_score", score, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 
         self.validation_step_outputs.clear()
+
+    def predict_step(self, batch, batch_idx) -> torch.Tensor:
+        output = self.model.predict(batch["feature"], self.duration)
+        return output.preds
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.cfg.optimizer.lr)

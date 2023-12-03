@@ -105,6 +105,7 @@ class PrepareDataConfig:
     rolling_var_period: int
     dark_drop_window_size: int
     dark_drop_th: int
+    features: list[str]
 
 
 @dataclass
@@ -152,7 +153,7 @@ class InferenceConfig:
     model: ModelConfig
     feature_extractor: FeatureExtractorConfig
     decoder: DecoderConfig
-    weight: WeightConfig
+    checkpoint_path: str
     dataset: DatasetConfig
     aug: AugmentationConfig
     pp: PostProcessConfig

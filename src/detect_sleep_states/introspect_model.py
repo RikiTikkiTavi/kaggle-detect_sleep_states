@@ -103,7 +103,7 @@ def visualize_extractor(
                 figure=fig,
                 artifact_file=f"{artifact_folder}/{n_series}-{keys[i]}.png"
             )
-            plt.close(fig)
+            plt.close("all")
 
 
 def introspect_model(
@@ -117,6 +117,8 @@ def introspect_model(
     labels = []
     predictions = []
     extractor_outputs = []
+
+    model_module.eval()
 
     _logger.info("Predicting for introspection ...")
     for batch in data_module.val_dataloader():
@@ -143,18 +145,17 @@ def introspect_model(
 
     predictions = np.array(predictions)
     labels = np.array(labels)
-    keys = np.array(keys)
     extractor_outputs = np.concatenate(extractor_outputs, axis=0)
 
-    _logger.info("Calculating metric ...")
+    _logger.info("Calculating val_pred_df ...")
     val_pred_df: pd.DataFrame = post_process_for_seg(
         keys=keys,
         preds=predictions[:, :, cfg.target_labels_idx],
         score_th=cfg.pp.score_th,
         distance=cfg.pp.distance,
     ).to_pandas()
-    score = event_detection_ap(model_module.val_event_df, val_pred_df)
-    logger.log_metrics({"best_val_score": score}, step=0)
+
+    keys = np.array(keys)
 
     _logger.info("Plotting predictions ...")
     visualize_predictions(
@@ -167,14 +168,18 @@ def introspect_model(
         logger=logger
     )
 
-    _logger.info("Plotting extractor results ...")
-    visualize_extractor(
-        val_pred_df=val_pred_df,
-        cfg=cfg,
-        keys=keys,
-        labels=labels,
-        predictions=predictions,
-        extractor_outputs=extractor_outputs,
-        valid_chunk_features=data_module.valid_chunk_features,
-        logger=logger,
-    )
+    if hasattr(model_module.model, "feature_extractor"):
+        _logger.info("Plotting extractor results ...")
+        visualize_extractor(
+            val_pred_df=val_pred_df,
+            cfg=cfg,
+            keys=keys,
+            labels=labels,
+            predictions=predictions,
+            extractor_outputs=extractor_outputs,
+            valid_chunk_features=data_module.valid_chunk_features,
+            logger=logger,
+        )
+
+    _logger.info("Finalizing ...")
+    plt.close('all')
