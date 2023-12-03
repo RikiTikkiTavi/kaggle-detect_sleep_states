@@ -106,10 +106,7 @@ class PLSleepModel(LightningModule):
         keys = []
         for x in self.validation_step_outputs:
             keys.extend(x[0])
-        labels = np.concatenate([x[1] for x in self.validation_step_outputs])
         preds = np.concatenate([x[2] for x in self.validation_step_outputs])
-        losses = np.array([x[3] for x in self.validation_step_outputs])
-        loss = losses.mean()
 
         val_pred_df: pd.DataFrame = post_process_for_seg(
             keys=keys,
@@ -120,15 +117,6 @@ class PLSleepModel(LightningModule):
         # TODO: Somehow became slower despite i haven't touched it
         score = event_detection_ap(self.val_event_df, val_pred_df.to_pandas())
         self.log("val_score", score, on_step=False, on_epoch=True, logger=True, prog_bar=True)
-
-        # TODO: Do once for best model!
-        if loss < self.__best_loss:
-            np.save("keys.npy", np.array(keys))
-            np.save("labels.npy", labels)
-            np.save("preds.npy", preds)
-            val_pred_df.write_csv("val_pred_df.csv")
-            torch.save(self.model.state_dict(), "best_model.pth")
-            self.__best_loss = loss
 
         self.validation_step_outputs.clear()
 

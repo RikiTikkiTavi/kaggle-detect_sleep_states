@@ -30,7 +30,10 @@ def plot_cnn_extractor_outputs_chunk(
         ax=axs[0]
     )
 
+    channel_output: np.ndarray
     for ax, channel_output in zip(axs[1:], extractor_outputs):
-        ax.imshow(channel_output, cmap="gray")
+        channel_output_min = channel_output.min()
+        channel_output_norm = (channel_output - channel_output_min) / (channel_output.max() - channel_output_min)
+        sns.heatmap(channel_output_norm, cmap="Greys", ax=ax, cbar=False, annot=False)
 
     return fig

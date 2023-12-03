@@ -26,6 +26,7 @@ segmentation-models-pytorch = "^0.3.3"
 torchaudio = { version = "^2.1.1", source="torch-cuda12.1"}
 hydra-submitit-launcher = "^1.2.0"
 hydra-joblib-launcher = "^1.2.0"
+numba = "^0.58.1"
 
 [tool.poetry.group.interactive.dependencies]
 ipykernel = "^6.26.0"

@@ -5,12 +5,12 @@
 #SBATCH --error="/beegfs/ws/0/s4610340-sleep_states/.logs/notebook_job_cpu/slurm-%j.out"
 #SBATCH --account="p_scads"
 #SBATCH --time=8:00:00
-#SBATCH --partition=romeo
+#SBATCH --partition=alpha
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=32
-#SBATCH --mem-per-cpu=5000
+#SBATCH --cpus-per-task=12
+#SBATCH --mem-per-cpu=3000
 
-module load modenv/hiera GCC/11.3.0 Python/3.10.4 CUDA/11.8.0
+module load GCC/11.3.0 Python/3.10.4 CUDA/12.0.0
 
 source /beegfs/ws/0/s4610340-sleep_states/kaggle-detect_sleep_states/.venv/bin/activate
 

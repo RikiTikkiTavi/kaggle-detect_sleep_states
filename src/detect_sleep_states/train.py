@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
+from hydra.types import RunMode
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import (
     LearningRateMonitor,
@@ -72,15 +73,16 @@ def main(cfg: TrainConfig):
     _logger.info("Setting up Trainer ...")
 
     hydra_config = HydraConfig.get()
-    if hydra_config.mode == "MULTIRUN":
-        usable_gpu_devices = find_usable_cuda_devices(-1)
+    usable_gpu_devices = find_usable_cuda_devices(-1)
+    if hydra_config.mode == RunMode.MULTIRUN:
         gpus = [
             usable_gpu_devices[hydra_config.job.num % len(usable_gpu_devices) + i]
             for i in range(cfg.trainer.gpus)
         ]
         _logger.info(f"Selected gpus {gpus} for job number {hydra_config.job.num}.")
     else:
-        gpus = cfg.trainer.gpus
+        gpus = usable_gpu_devices[:cfg.trainer.gpus]
+        _logger.info(f"Selected gpus {gpus}")
 
     trainer = Trainer(
         # env
@@ -126,7 +128,7 @@ def main(cfg: TrainConfig):
         data_module=datamodule,
         cfg=cfg,
         logger=pl_logger,
-        device=torch.device(type="cuda", index=0)
+        device=torch.device(type="cuda", index=gpus[0])
     )
 
     return

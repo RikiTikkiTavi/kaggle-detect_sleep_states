@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 import numpy as np
@@ -15,6 +16,8 @@ from pytorch_lightning.loggers import MLFlowLogger
 
 from detect_sleep_states.utils.metrics import event_detection_ap
 from detect_sleep_states.utils.post_process import post_process_for_seg
+
+_logger = logging.getLogger(__name__)
 
 
 def visualize_predictions(
@@ -115,6 +118,7 @@ def introspect_model(
     predictions = []
     extractor_outputs = []
 
+    _logger.info("Predicting for introspection ...")
     for batch in data_module.val_dataloader():
 
         batch_x = batch["feature"].to(device)
@@ -142,16 +146,17 @@ def introspect_model(
     keys = np.array(keys)
     extractor_outputs = np.concatenate(extractor_outputs, axis=0)
 
-    print(extractor_outputs.shape)
-
+    _logger.info("Calculating metric ...")
     val_pred_df: pd.DataFrame = post_process_for_seg(
         keys=keys,
         preds=predictions[:, :, cfg.target_labels_idx],
         score_th=cfg.pp.score_th,
         distance=cfg.pp.distance,
     ).to_pandas()
+    score = event_detection_ap(model_module.val_event_df, val_pred_df)
+    logger.log_metrics({"best_val_score": score}, step=0)
 
-    print("visualize_predictions")
+    _logger.info("Plotting predictions ...")
     visualize_predictions(
         val_pred_df=val_pred_df,
         cfg=cfg,
@@ -162,7 +167,7 @@ def introspect_model(
         logger=logger
     )
 
-    print("visualize_extractor")
+    _logger.info("Plotting extractor results ...")
     visualize_extractor(
         val_pred_df=val_pred_df,
         cfg=cfg,
