@@ -66,7 +66,7 @@ def get_test_dataloader(cfg: InferenceConfig) -> DataLoader:
 
 
 def inference(
-    duration: int, loader: DataLoader, model: BaseModel, device: torch.device, use_amp
+        duration: int, loader: DataLoader, model: BaseModel, device: torch.device, use_amp
 ) -> tuple[list[str], np.ndarray]:
     model = model.to(device)
     model.eval()
@@ -94,7 +94,7 @@ def inference(
 
 
 def make_submission(
-    keys: list[str], preds: np.ndarray, score_th, distance
+        keys: list[str], preds: np.ndarray, score_th, distance
 ) -> pd.DataFrame:
     sub_df = post_process_for_seg(
         keys,
@@ -122,7 +122,7 @@ def main(cfg: InferenceConfig):
     with trace("make submission"):
         sub_df = make_submission(
             keys,
-            preds,
+            preds[:, :, 1:],
             score_th=cfg.pp.score_th,
             distance=cfg.pp.distance,
         )
