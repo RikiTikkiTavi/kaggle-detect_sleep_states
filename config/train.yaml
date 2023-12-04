@@ -29,9 +29,9 @@ run_name: dummy
 batch_size: 32
 num_workers: 6
 duration: 5760
-downsample_rate: 2
+downsample_rate: 3
 upsample_rate: 1
-n_chunks_visualize: 3
+n_chunks_visualize: 1
 
 trainer:
   epochs: 50
@@ -53,8 +53,8 @@ aug:
   
 # post_process
 pp:
-  score_th: 0.05
-  distance: 10
+  score_th: 0.07
+  distance: 40
 
 # label
 labels:

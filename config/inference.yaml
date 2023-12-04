@@ -23,7 +23,7 @@ checkpoint_path: ""
 
 seed: 42
 duration: 5760
-downsample_rate: 2
+downsample_rate: 3
 upsample_rate: 1
 batch_size: 32
 num_workers: 2
@@ -38,8 +38,8 @@ aug:
 
 # post_process
 pp:
-  score_th: 0.02
-  distance: 10
+  score_th: 0.07
+  distance: 40
 
 # label
 labels:

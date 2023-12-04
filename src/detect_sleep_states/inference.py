@@ -2,6 +2,7 @@ from pathlib import Path
 
 import hydra
 import numpy as np
+import pandas as pd
 import polars as pl
 import torch
 from pytorch_lightning import seed_everything
@@ -94,7 +95,7 @@ def inference(
 
 def make_submission(
     keys: list[str], preds: np.ndarray, score_th, distance
-) -> pl.DataFrame:
+) -> pd.DataFrame:
     sub_df = post_process_for_seg(
         keys,
         preds,  # type: ignore
@@ -125,7 +126,7 @@ def main(cfg: InferenceConfig):
             score_th=cfg.pp.score_th,
             distance=cfg.pp.distance,
         )
-    sub_df.write_csv(Path(cfg.dir.sub_dir) / "submission.csv")
+    sub_df.to_csv(Path(cfg.dir.sub_dir) / "submission.csv", index=False)
 
 
 if __name__ == "__main__":

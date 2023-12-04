@@ -153,7 +153,7 @@ def introspect_model(
         preds=predictions[:, :, cfg.target_labels_idx],
         score_th=cfg.pp.score_th,
         distance=cfg.pp.distance,
-    ).to_pandas()
+    )
 
     keys = np.array(keys)
 

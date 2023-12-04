@@ -17,15 +17,32 @@ class CNNSpectrogram(nn.Module):
         conv: Callable = nn.Conv1d,
         reinit: bool = True,
     ):
+        """
+        :param in_channels: Number of classes
+        :param base_filters: Each output channel will have this height (H) (where width is L).
+        :param kernel_sizes: Kernel sizes
+        :param stride: Stride
+        :param sigmoid:
+        :param output_size: L timesteps (L) in output. Use to downsample
+        :param conv:
+        :param reinit:
+        """
         super().__init__()
+        # Out channels equals to kernel sizes
         self.out_chans = len(kernel_sizes)
         self.out_size = output_size
         self.sigmoid = sigmoid
+        # Set base filters in correct format
         if isinstance(base_filters, int):
             base_filters = tuple([base_filters])
         self.height = base_filters[-1]
+        # Init list of modules
         self.spec_conv = nn.ModuleList()
+        # Iterate over channels
         for i in range(self.out_chans):
+            # Single convolutional layer with kernel size corresponding to channel
+            # Takes (N, L, C) input and produces (N, L, H)
+            # Produces H features from combinations of input features
             tmp_block = [
                 conv(
                     in_channels,

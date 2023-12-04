@@ -251,7 +251,6 @@ def main(cfg: PrepareDataConfig):
                     pl.col("series_id"),
                     pl.col("anglez"),
                     pl.col("enmo"),
-                    pl.col("step"),
                     pl.col("timestamp"),
                     pl.col("anglez_rad"),
                 ]

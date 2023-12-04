@@ -1,6 +1,6 @@
 name: CNNSpectrogram
 params:
-  base_filters: 64
+  base_filters: 32
   kernel_sizes:
     - 32
     - 16
