@@ -1,0 +1,55 @@
+# ---------- Overriding hydra default configs ----------
+hydra:
+  job:
+    name: inference
+    chdir: true
+  run:
+    dir: ${dir.output_dir}/${hydra.job.name}/${exp_name}/single
+  sweep:
+    dir: ${dir.output_dir}/${hydra.job.name}/${exp_name}
+    subdir: run${hydra.job.num}
+
+defaults:
+  - _self_
+  - dir: local
+  - dataset: seg
+  - model: Spec2DCNN
+  - feature_extractor: CNNSpectrogram
+  - decoder: UNet1DDecoder
+
+exp_name: dummy
+phase: test
+checkpoint_path: ""
+
+seed: 42
+duration: 5760
+downsample_rate: 3
+upsample_rate: 1
+batch_size: 32
+num_workers: 2
+use_amp: true
+
+# augmentation
+aug:
+  mixup_prob: 0.0
+  mixup_alpha: 0.4
+  cutmix_prob: 0.0
+  cutmix_alpha: 0.4
+
+# post_process
+pp:
+  score_th: 0.07
+  distance: 40
+
+# label
+labels:
+  - "awake"
+  - "event_onset"
+  - "event_wakeup"
+
+# feature
+features:
+  - "anglez"
+  - "enmo"
+  - "hour_sin"
+  - "hour_cos"
