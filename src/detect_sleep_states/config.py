@@ -49,6 +49,7 @@ class TrainerConfig:
     monitor_mode: str
     check_val_every_n_epoch: int
     gpus: int
+    save_last: bool
 
 
 @dataclass

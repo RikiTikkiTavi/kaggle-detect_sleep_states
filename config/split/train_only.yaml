@@ -220,7 +220,6 @@ train_series_ids:
   - "fa149c3c4bde"
   - "fb223ed2278c"
   - "fcca183903b7"
-valid_series_ids:
   - "03d92c9f6f8a"
   - "0cd1e3d0ed95"
   - "0cfc06c129cc"
@@ -277,3 +276,4 @@ valid_series_ids:
   - "f7eb179216c2"
   - "fbf33b1a2c10"
   - "fe90110788d2"
+valid_series_ids: []

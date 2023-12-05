@@ -1,5 +1,0 @@
-name: SpecFeatureExtractor
-params:
-  height: 64
-  hop_length: ${downsample_rate}
-  win_length: 

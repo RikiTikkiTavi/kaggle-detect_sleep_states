@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 # ref: https://github.com/analokmaus/kaggle-g2net-public/tree/main/models1d_pytorch
 class CNNSpectrogram(nn.Module):
     def __init__(
@@ -18,6 +19,8 @@ class CNNSpectrogram(nn.Module):
             reinit: bool = True,
             skip_connections_features: Sequence[int] = tuple(),
             required_height=32,
+            features_to_drop_idx: Sequence[int] = (2, 3),
+            features_drop_p: float = 0.3
     ):
         """
         :param in_channels: Number of classes
@@ -31,11 +34,13 @@ class CNNSpectrogram(nn.Module):
         """
         super().__init__()
         # Out channels equals to kernel sizes
-        self.out_chans = len(kernel_sizes)
+        self.out_chans = len(kernel_sizes) + 1 if len(skip_connections_features) > 0 else len(kernel_sizes)
+        self.auto_out_chans = len(kernel_sizes)
         self.out_size = output_size
         self.sigmoid = sigmoid
         self.skip_connections_features = skip_connections_features
         self.required_height = required_height
+        self.features_to_drop_idx = features_to_drop_idx
         # Set base filters in correct format
         if isinstance(base_filters, int):
             base_filters = tuple([base_filters])
@@ -43,7 +48,8 @@ class CNNSpectrogram(nn.Module):
         # Init list of modules
         self.spec_conv = nn.ModuleList()
         # Iterate over channels
-        for i in range(self.out_chans):
+        self.drop_feature = nn.Dropout1d(p=features_drop_p, inplace=False)
+        for i in range(self.auto_out_chans):
             # Single convolutional layer with kernel size corresponding to channel
             # Produces H features from combinations of input features
             tmp_block = [
@@ -77,7 +83,6 @@ class CNNSpectrogram(nn.Module):
 
         if len(self.skip_connections_features) > 0:
             self.short_path = nn.Sequential(
-                nn.BatchNorm1d(num_features=len(skip_connections_features)),
                 nn.AdaptiveMaxPool1d(output_size=self.out_size)
             )
 
@@ -99,14 +104,11 @@ class CNNSpectrogram(nn.Module):
             _type_: (batch_size, out_chans, height, time_steps)
         """
         # x: (batch_size, in_channels, time_steps)
+        x[:, self.features_to_drop_idx, :] = self.drop_feature(x[:, self.features_to_drop_idx, :])
         out: list[torch.Tensor] = []
-        for i in range(self.out_chans):
+        for i in range(self.auto_out_chans):
             # (batch_size, 1, height, time_steps)
             out_channel = self.spec_conv[i](x)
-            if len(self.skip_connections_features) > 0:
-                x_skip = self.short_path(x[:, self.skip_connections_features, :])
-                out_channel = torch.stack((out_channel, x_skip), dim=1)
-
             out.append(out_channel)
 
         img = torch.stack(out, dim=1)  # (batch_size, out_chans, height, time_steps)
@@ -115,6 +117,16 @@ class CNNSpectrogram(nn.Module):
             img = self.pool(img)  # (batch_size, out_chans, height, out_size)
         if self.sigmoid:
             img = img.sigmoid()
+
+        if len(self.skip_connections_features) > 0:
+            x_skip = self.short_path(x[:, self.skip_connections_features, :])
+            if x_skip.size(1) < img.size(2):
+                height_diff = img.size(2) - x_skip.size(1)
+                pad_top = height_diff // 2
+                pad_bot = height_diff - pad_top
+                x_skip = F.pad(x_skip, (0, 0, pad_top, pad_bot), value=-1)
+            x_skip = torch.unsqueeze(x_skip, 1)
+            img = torch.cat((img, x_skip), dim=1)
 
         # Pad to required_height
         if img.size(2) < self.required_height:

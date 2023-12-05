@@ -59,18 +59,18 @@ def post_process_for_seg(
 
         series_sub_df = pd.DataFrame(series_records)
 
-        events_count_thr = 100
-        window_size = 360
-        multiplier = 1
+        events_count_thr = len(preds) // 2
+        window_size = 30
+        step = 0
 
         while True:
             if events_count < events_count_thr:
                 break
             else:
-                series_sub_df = aggregate_series_events_df(series_sub_df, window_size=window_size * multiplier)
+                series_sub_df = aggregate_series_events_df(series_sub_df, window_size=window_size + step)
                 events_count = len(series_sub_df)
 
-            multiplier += 1
+            step += 10
 
         sub_dfs.append(series_sub_df)
 

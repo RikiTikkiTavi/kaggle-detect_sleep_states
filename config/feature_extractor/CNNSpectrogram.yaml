@@ -1,7 +1,8 @@
 name: CNNSpectrogram
 params:
-  base_filters: 8
+  base_filters: 32
   kernel_sizes:
+    - 32
     - 16
     - ${downsample_rate}
   stride: ${downsample_rate}

@@ -50,12 +50,13 @@ def main(cfg: TrainConfig):
     )
 
     # set callbacks
+    if cfg.trainer.save_last:
+        cp_kwargs = dict(save_last=True)
+    else:
+        cp_kwargs = dict(monitor=cfg.trainer.monitor, mode=cfg.trainer.monitor_mode, save_top_k=1)
     checkpoint_cb = ModelCheckpoint(
         verbose=True,
-        monitor=cfg.trainer.monitor,
-        mode=cfg.trainer.monitor_mode,
-        save_top_k=1,
-        save_last=False,
+        **cp_kwargs
     )
     lr_monitor = LearningRateMonitor("epoch")
     progress_bar = TQDMProgressBar()
@@ -122,7 +123,8 @@ def main(cfg: TrainConfig):
         num_classes=len(cfg.labels),
         duration=cfg.duration,
     )
-    pl_logger.log_metrics({"best_val_score": checkpoint_cb.best_model_score.item()})
+    if checkpoint_cb.best_model_score is not None:
+        pl_logger.log_metrics({"best_val_score": checkpoint_cb.best_model_score.item()})
     with mlflow.start_run(run_id=pl_logger.run_id) as _:
         mlflow.pytorch.log_state_dict(best_model.model.state_dict(), artifact_path="model")
 

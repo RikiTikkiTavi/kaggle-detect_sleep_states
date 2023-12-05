@@ -1,6 +1,0 @@
-name: LSTMDecoder
-params:
-  hidden_size: 128
-  num_layers: 2
-  dropout: 0.2
-  bidirectional: true
