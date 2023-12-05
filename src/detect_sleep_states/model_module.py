@@ -125,7 +125,7 @@ class PLSleepModel(LightningModule):
         return output.preds
 
     def configure_optimizers(self):
-        optimizer = optim.AdamW(self.parameters(), lr=self.cfg.optimizer.lr)
+        optimizer = optim.NAdam(self.parameters(), lr=self.cfg.optimizer.lr)
         scheduler = get_cosine_schedule_with_warmup(
             optimizer, num_training_steps=self.trainer.max_steps, **self.cfg.scheduler
         )

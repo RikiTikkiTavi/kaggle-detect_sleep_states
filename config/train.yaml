@@ -1,7 +1,7 @@
 # ---------- Overriding hydra default configs ----------
 hydra:
-  launcher:
-    n_jobs: 4
+  #launcher:
+   # n_jobs: 4
 
   job:
     name: train
@@ -21,7 +21,7 @@ defaults:
   - decoder: UNet1DDecoder
   - split: fold_0
   - loss: focal
-  - override hydra/launcher: joblib
+#  - override hydra/launcher: joblib
 
 seed: 42
 exp_name: dummy
