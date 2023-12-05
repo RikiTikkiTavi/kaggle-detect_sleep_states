@@ -5,3 +5,5 @@ params:
   res: false
   scale_factor: 2
   dropout: 0.2
+  linear_peak_extractor: False
+  n_peak_extractor_layers: 2

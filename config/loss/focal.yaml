@@ -1,6 +1,6 @@
 name: focal
 params:
-  gamma: 0.34
+  gamma: 0.8
   reduction: "mean"
   alpha:
     - 0.5
@@ -8,5 +8,5 @@ params:
     - 1
   pos_weight:
     - 1
-    - 4
-    - 4
+    - 3
+    - 3

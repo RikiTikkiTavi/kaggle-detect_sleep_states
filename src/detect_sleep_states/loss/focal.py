@@ -6,7 +6,7 @@ from torch.nn.functional import log_softmax, nll_loss
 from typing import Union, Optional, Sequence
 
 from torchvision.ops.focal_loss import sigmoid_focal_loss
-
+from collections.abc import Sequence
 
 class FocalLoss(nn.Module):
 
@@ -14,7 +14,7 @@ class FocalLoss(nn.Module):
             self,
             alpha: list[float],
             pos_weight: list[float],
-            gamma: float = 0.,
+            gamma: list[float],
             reduction: str = 'mean',
     ):
         if reduction not in ('mean', 'sum', 'none'):
@@ -50,6 +50,7 @@ class FocalLoss(nn.Module):
                 pos_weight=pos_weight[class_i]
             )
             p_t = torch.exp(-bce_loss)
-            loss += class_alpha * ((1 - p_t) ** self.gamma * bce_loss).mean()
+            gamma = self.gamma[class_i] if isinstance(self.gamma, Sequence) else self.gamma
+            loss += class_alpha * ((1 - p_t) ** gamma * bce_loss).mean()
 
         return loss

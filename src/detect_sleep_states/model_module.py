@@ -114,7 +114,6 @@ class PLSleepModel(LightningModule):
             score_th=self.cfg.pp.score_th,
             distance=self.cfg.pp.distance,
         )
-        # TODO: Somehow became slower despite i haven't touched it
         score = event_detection_ap(self.val_event_df, val_pred_df)
         self.log("val_score", score, on_step=False, on_epoch=True, logger=True, prog_bar=True)
 

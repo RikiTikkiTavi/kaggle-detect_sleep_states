@@ -33,13 +33,13 @@ class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
 
     def __init__(
-        self,
-        in_channels,
-        out_channels,
-        mid_channels=None,
-        norm=nn.BatchNorm1d,
-        se=False,
-        res=False,
+            self,
+            in_channels,
+            out_channels,
+            mid_channels=None,
+            norm=nn.BatchNorm1d,
+            se=False,
+            res=False,
     ):
         super().__init__()
         self.res = res
@@ -69,7 +69,7 @@ class Down(nn.Module):
     """Downscaling with maxpool then double conv"""
 
     def __init__(
-        self, in_channels, out_channels, scale_factor, norm=nn.BatchNorm1d, se=False, res=False
+            self, in_channels, out_channels, scale_factor, norm=nn.BatchNorm1d, se=False, res=False
     ):
         super().__init__()
         self.maxpool_conv = nn.Sequential(
@@ -85,7 +85,7 @@ class Up(nn.Module):
     """Upscaling then double conv"""
 
     def __init__(
-        self, in_channels, out_channels, bilinear=True, scale_factor=2, norm=nn.BatchNorm1d
+            self, in_channels, out_channels, bilinear=True, scale_factor=2, norm=nn.BatchNorm1d
     ):
         super().__init__()
 
@@ -114,15 +114,17 @@ def create_layer_norm(channel, length):
 
 class UNet1DDecoder(nn.Module):
     def __init__(
-        self,
-        n_channels: int,
-        n_classes: int,
-        duration: int,
-        bilinear: bool = True,
-        se: bool = False,
-        res: bool = False,
-        scale_factor: int = 2,
-        dropout: float = 0.2,
+            self,
+            n_channels: int,
+            n_classes: int,
+            duration: int,
+            bilinear: bool = True,
+            se: bool = False,
+            res: bool = False,
+            scale_factor: int = 2,
+            dropout: float = 0.2,
+            linear_peak_extractor: bool = False,
+            n_peak_extractor_layers: int = 2
     ):
         super().__init__()
         self.n_channels = n_channels
@@ -132,6 +134,7 @@ class UNet1DDecoder(nn.Module):
         self.se = se
         self.res = res
         self.scale_factor = scale_factor
+        self.linear_peak_extractor = linear_peak_extractor
 
         factor = 2 if bilinear else 1
         self.inc = DoubleConv(
@@ -184,8 +187,19 @@ class UNet1DDecoder(nn.Module):
             nn.Dropout(dropout),
         )
 
+        if linear_peak_extractor:
+            peak_extractor_layers = []
+            for i in range(n_peak_extractor_layers):
+                peak_extractor_layers.append(nn.Linear(duration * self.n_classes, duration * self.n_classes))
+                if i < n_peak_extractor_layers - 1:
+                    peak_extractor_layers.append(nn.ReLU())
+
+            self.peak_extractor = nn.Sequential(*peak_extractor_layers)
+        else:
+            self.peak_extractor = nn.Identity()
+
     def forward(
-        self, x: torch.Tensor, labels: Optional[torch.Tensor] = None
+            self, x: torch.Tensor, labels: Optional[torch.Tensor] = None
     ) -> dict[str, Optional[torch.Tensor]]:
         """Forward
 
@@ -209,4 +223,12 @@ class UNet1DDecoder(nn.Module):
 
         # classifier
         logits = self.cls(x)  # (batch_size, n_classes, n_timesteps)
-        return logits.transpose(1, 2)  # (batch_size, n_timesteps, n_classes)
+        logits: torch.Tensor = logits.transpose(1, 2)  # (batch_size, n_timesteps, n_classes)
+
+        if self.linear_peak_extractor:
+            logits = torch.flatten(logits, start_dim=1, end_dim=2)  # (batch_size, n_timesteps * n_classes)
+            logits = self.peak_extractor(logits)  # (batch_size, n_timesteps * n_classes)
+            # (batch_size, n_timesteps, n_classes)
+            logits = torch.reshape(logits, (logits.size(0), self.duration, self.n_classes))
+
+        return logits

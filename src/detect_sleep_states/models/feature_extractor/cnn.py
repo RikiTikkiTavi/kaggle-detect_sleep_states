@@ -1,21 +1,23 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Sequence
 
 import torch
 import torch.nn as nn
-
+import torch.nn.functional as F
 
 # ref: https://github.com/analokmaus/kaggle-g2net-public/tree/main/models1d_pytorch
 class CNNSpectrogram(nn.Module):
     def __init__(
-        self,
-        in_channels: int = 3,
-        base_filters: int | tuple = 128,
-        kernel_sizes: tuple = (32, 16, 4, 2),
-        stride: int = 4,
-        sigmoid: bool = False,
-        output_size: Optional[int] = None,
-        conv: Callable = nn.Conv1d,
-        reinit: bool = True,
+            self,
+            in_channels: int = 3,
+            base_filters: int | tuple = 128,
+            kernel_sizes: tuple = (32, 16, 4, 2),
+            stride: int = 4,
+            sigmoid: bool = False,
+            output_size: Optional[int] = None,
+            conv: Callable = nn.Conv1d,
+            reinit: bool = True,
+            skip_connections_features: Sequence[int] = tuple(),
+            required_height=32,
     ):
         """
         :param in_channels: Number of classes
@@ -32,16 +34,17 @@ class CNNSpectrogram(nn.Module):
         self.out_chans = len(kernel_sizes)
         self.out_size = output_size
         self.sigmoid = sigmoid
+        self.skip_connections_features = skip_connections_features
+        self.required_height = required_height
         # Set base filters in correct format
         if isinstance(base_filters, int):
             base_filters = tuple([base_filters])
-        self.height = base_filters[-1]
+        self.height = required_height
         # Init list of modules
         self.spec_conv = nn.ModuleList()
         # Iterate over channels
         for i in range(self.out_chans):
             # Single convolutional layer with kernel size corresponding to channel
-            # Takes (N, L, C) input and produces (N, L, H)
             # Produces H features from combinations of input features
             tmp_block = [
                 conv(
@@ -72,6 +75,12 @@ class CNNSpectrogram(nn.Module):
         if self.out_size is not None:
             self.pool = nn.AdaptiveAvgPool2d((None, self.out_size))
 
+        if len(self.skip_connections_features) > 0:
+            self.short_path = nn.Sequential(
+                nn.BatchNorm1d(num_features=len(skip_connections_features)),
+                nn.AdaptiveMaxPool1d(output_size=self.out_size)
+            )
+
         if reinit:
             for m in self.modules():
                 if isinstance(m, nn.Conv1d):
@@ -92,10 +101,26 @@ class CNNSpectrogram(nn.Module):
         # x: (batch_size, in_channels, time_steps)
         out: list[torch.Tensor] = []
         for i in range(self.out_chans):
-            out.append(self.spec_conv[i](x))
+            # (batch_size, 1, height, time_steps)
+            out_channel = self.spec_conv[i](x)
+            if len(self.skip_connections_features) > 0:
+                x_skip = self.short_path(x[:, self.skip_connections_features, :])
+                out_channel = torch.stack((out_channel, x_skip), dim=1)
+
+            out.append(out_channel)
+
         img = torch.stack(out, dim=1)  # (batch_size, out_chans, height, time_steps)
+
         if self.out_size is not None:
             img = self.pool(img)  # (batch_size, out_chans, height, out_size)
         if self.sigmoid:
             img = img.sigmoid()
+
+        # Pad to required_height
+        if img.size(2) < self.required_height:
+            height_diff = self.required_height - img.size(2)
+            pad_top = height_diff // 2
+            pad_bot = height_diff - pad_top
+            img = F.pad(img, (0, 0, pad_top, pad_bot), value=-1)
+
         return img
