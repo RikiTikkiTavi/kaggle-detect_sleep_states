@@ -23,7 +23,7 @@ class Spec2DCNN(BaseModel):
     ):
         super().__init__()
         self.feature_extractor = feature_extractor
-        self.encoder = smp.UnetPlusPlus(
+        self.encoder = smp.Unet(
             encoder_name=encoder_name,
             encoder_weights=encoder_weights,
             in_channels=in_channels,

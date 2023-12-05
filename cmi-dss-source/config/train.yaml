@@ -26,7 +26,7 @@ defaults:
 seed: 42
 exp_name: dummy
 run_name: dummy
-batch_size: 16
+batch_size: 32
 num_workers: 6
 duration: 5760
 downsample_rate: 3
@@ -70,14 +70,19 @@ target_labels_idx:
 features:
   - "anglez"
   - "enmo"
-  #- "day_of_week_sin"
-  #- "day_of_week_cos"
+  # - "step"
+  # - "month_sin"
+  # - "month_cos"
+  # - "day_of_week_sin"
+  # - "day_of_week_cos"
   - "hour_sin"
   - "hour_cos"
-  #- "minute_sin"
-  #- "minute_cos"
-  #- "anglez_total_variation"
-  #- "enmo_total_variation"
+  # - "minute_sin"
+  # - "minute_cos"
+  # - "anglez_sin"
+  # - "anglez_cos"
+  # - "anglez_total_variation"
+  # - "enmo_total_variation"
 
 # optimizer
 optimizer:

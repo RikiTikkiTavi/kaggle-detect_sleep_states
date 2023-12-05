@@ -1,4 +1,4 @@
 name: Spec2DCNN
 params:
-  encoder_name: resnet34
-  encoder_weights: imagenet
+  encoder_name: timm-efficientnet-b6
+  encoder_weights: advprop

@@ -1,0 +1,36 @@
+# ---------- Overriding hydra default configs ----------
+hydra:
+  job:
+    name: prepare_data
+    chdir: true
+  run:
+    dir: ${dir.output_dir}/${hydra.job.name}/${hydra.job.override_dirname}
+  sweep:
+    dir: ${dir.output_dir}/${hydra.job.name}/
+    subdir: ${hydra.job.override_dirname}
+
+defaults:
+  - _self_
+  - dir: alpha
+
+phase: train
+rolling_var_period: 30
+dark_drop_window_size: 8640
+dark_drop_th: 0.5
+
+features:
+  - "anglez"
+  - "enmo"
+  # - "step"
+  # - "month_sin"
+  # - "month_cos"
+  # - "day_of_week_sin"
+  # - "day_of_week_cos"
+  - "hour_sin"
+  - "hour_cos"
+  # - "minute_sin"
+  # - "minute_cos"
+  # - "anglez_sin"
+  # - "anglez_cos"
+  # - "anglez_total_variation"
+  # - "enmo_total_variation"

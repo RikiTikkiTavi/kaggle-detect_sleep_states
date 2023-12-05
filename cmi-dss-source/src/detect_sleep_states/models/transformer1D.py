@@ -8,49 +8,42 @@ from torchvision.transforms.functional import resize
 from detect_sleep_states.augmentation.cutmix import Cutmix
 from detect_sleep_states.augmentation.mixup import Mixup
 from detect_sleep_states.models.base import BaseModel
+from detect_sleep_states.models.decoder.transformerdecoder import TransformerDecoder
 
 
-class Spec2DCNN(BaseModel):
+class Transformer1D(BaseModel):
     def __init__(
-        self,
-        feature_extractor: nn.Module,
-        decoder: nn.Module,
-        encoder_name: str,
-        in_channels: int,
-        encoder_weights: Optional[str] = None,
-        mixup_alpha: float = 0.5,
-        cutmix_alpha: float = 0.5,
+            self,
+            decoder: TransformerDecoder,
+            mixup_alpha: float = 0.5,
+            cutmix_alpha: float = 0.5,
     ):
         super().__init__()
-        self.feature_extractor = feature_extractor
-        self.encoder = smp.UnetPlusPlus(
-            encoder_name=encoder_name,
-            encoder_weights=encoder_weights,
-            in_channels=in_channels,
-            classes=1,
-        )
         self.decoder = decoder
         self.mixup = Mixup(mixup_alpha)
         self.cutmix = Cutmix(cutmix_alpha)
 
-
-
     def _forward(
-        self,
-        x: torch.Tensor,
-        labels: Optional[torch.Tensor] = None,
-        do_mixup: bool = False,
-        do_cutmix: bool = False,
+            self,
+            x: torch.Tensor,
+            labels: Optional[torch.Tensor] = None,
+            do_mixup: bool = False,
+            do_cutmix: bool = False,
     ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
-        x = self.feature_extractor(x)  # (batch_size, n_channels, height, n_timesteps)
+        """
+        :param x: (N, L, E)
+        :param labels: (N, L, C)
+        :param do_mixup:
+        :param do_cutmix:
+        :return:
+        """
 
         if do_mixup and labels is not None:
             x, labels = self.mixup(x, labels)
         if do_cutmix and labels is not None:
             x, labels = self.cutmix(x, labels)
 
-        x = self.encoder(x).squeeze(1)  # (batch_size, height, n_timesteps)
-        logits = self.decoder(x)  # (batch_size, n_timesteps, n_classes)
+        logits = self.decoder(x)
 
         if labels is not None:
             return logits, labels
