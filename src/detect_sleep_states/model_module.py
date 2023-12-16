@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 
 import mlflow
 import numpy as np
@@ -14,7 +14,7 @@ from transformers import get_cosine_schedule_with_warmup, get_cosine_with_hard_r
 
 from detect_sleep_states.config import TrainConfig
 from detect_sleep_states.models.base import ModelOutput
-from detect_sleep_states.models.common import get_model
+from detect_sleep_states.models.common import get_model, BaseModel
 from detect_sleep_states.loss.common import get_loss
 from detect_sleep_states.utils.common import nearest_valid_size
 from detect_sleep_states.utils.metrics import event_detection_ap
@@ -28,29 +28,50 @@ _logger = logging.getLogger(__name__)
 
 class PLSleepModel(LightningModule):
     val_event_df: pd.DataFrame
+    model: BaseModel
+    loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
+    duration: int
+    validation_step_outputs: list
 
     def __init__(
             self,
             cfg: TrainConfig,
             val_event_df: pl.DataFrame,
-            feature_dim: int,
-            num_classes: int,
-            duration: int
+            model: BaseModel,
+            duration: int,
+            loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
     ):
         super().__init__()
         self.cfg = cfg
         self.val_event_df = val_event_df.to_pandas()
-        num_timesteps = nearest_valid_size(int(duration * cfg.upsample_rate), cfg.downsample_rate)
-        self.model = get_model(
-            cfg,
-            feature_dim=feature_dim,
-            n_classes=num_classes,
-            num_timesteps=num_timesteps // cfg.downsample_rate,
-        )
-        self.loss_fn = get_loss(cfg.loss)
+
+        self.model = model
+        self.loss_fn = loss_fn
         self.duration = duration
         self.validation_step_outputs: list = []
-        self.__best_loss = np.inf
+
+    @staticmethod
+    def from_config(
+            cfg: TrainConfig,
+            val_event_df: pl.DataFrame,
+            n_classes: int,
+            duration: int,
+            feature_dim: int
+    ) -> "PLSleepModel":
+        n_timesteps = nearest_valid_size(int(duration * cfg.upsample_rate), cfg.downsample_rate)
+        model = get_model(
+            cfg,
+            feature_dim=feature_dim,
+            n_classes=n_classes,
+            num_timesteps=n_timesteps // cfg.downsample_rate,
+        )
+        return PLSleepModel(
+            cfg=cfg,
+            model=model,
+            loss_fn=get_loss(cfg.loss),
+            val_event_df=val_event_df,
+            duration=duration
+        )
 
     def forward(
             self,

@@ -36,16 +36,15 @@ _logger = logging.getLogger(__file__)
 def main(cfg: TrainConfig):
     seed_everything(cfg.seed)
 
-    # init data module
-    datamodule = SleepDataModule(cfg)
-    _logger.info(datamodule.train_event_df)
-
     _logger.info("Setting up DataModule ...")
-    model = PLSleepModel(
+    datamodule = SleepDataModule.from_config(cfg)
+
+    _logger.info("Setting up ModelModule ...")
+    model = PLSleepModel.from_config(
         cfg=cfg,
         val_event_df=datamodule.valid_event_df,
         feature_dim=len(cfg.features),
-        num_classes=len(cfg.labels),
+        n_classes=len(cfg.labels),
         duration=cfg.duration
     )
 
@@ -128,14 +127,15 @@ def main(cfg: TrainConfig):
     with mlflow.start_run(run_id=pl_logger.run_id) as _:
         mlflow.pytorch.log_state_dict(best_model.model.state_dict(), artifact_path="model")
 
-    _logger.info("Introspecting model ...")
-    detect_sleep_states.introspect_model.introspect_model(
-        model_module=best_model,
-        data_module=datamodule,
-        cfg=cfg,
-        logger=pl_logger,
-        device=torch.device(type="cuda", index=gpus[0])
-    )
+    if cfg.split.name != "train_only":
+        _logger.info("Introspecting model ...")
+        detect_sleep_states.introspect_model.introspect_model(
+            model_module=best_model,
+            data_module=datamodule,
+            cfg=cfg,
+            logger=pl_logger,
+            device=torch.device(type="cuda", index=gpus[0])
+        )
 
     return
 

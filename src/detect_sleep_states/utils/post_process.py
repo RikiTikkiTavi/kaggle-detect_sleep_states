@@ -59,7 +59,7 @@ def post_process_for_seg(
 
         series_sub_df = pd.DataFrame(series_records)
 
-        events_count_thr = len(preds) // 2
+        events_count_thr = 100000
         window_size = 30
         step = 0
 

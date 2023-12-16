@@ -11,7 +11,6 @@ from detect_sleep_states.config import InferenceConfig, TrainConfig
 from detect_sleep_states.utils.common import gaussian_label, nearest_valid_size, negative_sampling, random_crop
 from detect_sleep_states.utils.common import pad_if_needed
 
-
 ###################
 # Label
 ###################
@@ -22,7 +21,8 @@ def get_seg_label(
     this_event_df = this_event_df.query("@start <= wakeup & onset <= @end")
 
     label = np.zeros((num_frames, 3))
-    # onset, wakeup, sleepのラベルを作成
+
+    # onset, wakeup, sleep
     for onset, wakeup in this_event_df[["onset", "wakeup"]].to_numpy():
         onset = int((onset - start) / duration * num_frames)
         wakeup = int((wakeup - start) / duration * num_frames)

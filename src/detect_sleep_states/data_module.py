@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+import polars
 import polars as pl
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
@@ -13,14 +14,12 @@ from detect_sleep_states.utils.common import pad_if_needed
 
 _logger = logging.getLogger(__name__)
 
-###################
-# Load Functions
-###################
+
 def load_features(
-    feature_names: list[str],
-    series_ids: Optional[list[str]],
-    processed_dir: Path,
-    phase: str,
+        feature_names: list[str],
+        series_ids: Optional[list[str]],
+        processed_dir: Path,
+        phase: str,
 ) -> dict[str, np.ndarray]:
     features = {}
 
@@ -38,11 +37,11 @@ def load_features(
 
 
 def load_chunk_features(
-    duration: int,
-    feature_names: list[str],
-    series_ids: Optional[list[str]],
-    processed_dir: Path,
-    phase: str,
+        duration: int,
+        feature_names: list[str],
+        series_ids: Optional[list[str]],
+        processed_dir: Path,
+        phase: str,
 ) -> dict[str, np.ndarray]:
     features = {}
 
@@ -57,7 +56,7 @@ def load_chunk_features(
         this_feature = np.stack(this_feature, axis=1)
         num_chunks = (len(this_feature) // duration) + 1
         for i in range(num_chunks):
-            chunk_feature = this_feature[i * duration : (i + 1) * duration]
+            chunk_feature = this_feature[i * duration: (i + 1) * duration]
             chunk_feature = pad_if_needed(chunk_feature, duration, pad_value=0)  # type: ignore
             features[f"{series_id}_{i:07}"] = chunk_feature
 
@@ -65,33 +64,58 @@ def load_chunk_features(
 
 
 class SleepDataModule(LightningDataModule):
-    def __init__(self, cfg: TrainConfig):
+    cfg: TrainConfig
+    train_event_df: polars.DataFrame
+    valid_event_df: polars.DataFrame
+    train_features: dict[str, np.ndarray]
+    valid_chunk_features: dict[str, np.ndarray]
+
+    def __init__(
+            self,
+            cfg: TrainConfig,
+            train_event_df: polars.DataFrame,
+            valid_event_df: polars.DataFrame,
+            train_features: dict[str, np.ndarray],
+            valid_chunk_features: dict[str, np.ndarray]
+    ):
         super().__init__()
         self.cfg = cfg
         self.data_dir = Path(cfg.dir.data_dir)
         self.processed_dir = Path(cfg.dir.processed_dir)
-        self.event_df = pl.read_csv(self.processed_dir / "train_events.csv").drop_nulls()
-        self.train_event_df = self.event_df.filter(
-            pl.col("series_id").is_in(self.cfg.split.train_series_ids)
-        )
-        self.valid_event_df = self.event_df.filter(
-            pl.col("series_id").is_in(self.cfg.split.valid_series_ids)
-        )
-        # train data
-        self.train_features = load_features(
-            feature_names=self.cfg.features,
-            series_ids=self.cfg.split.train_series_ids,
-            processed_dir=self.processed_dir,
-            phase="train",
-        )
+        self.train_event_df = train_event_df
+        self.valid_event_df = valid_event_df
+        self.train_features = train_features
+        self.valid_chunk_features = valid_chunk_features
 
-        # valid data
-        self.valid_chunk_features = load_chunk_features(
-            duration=self.cfg.duration,
-            feature_names=self.cfg.features,
-            series_ids=self.cfg.split.valid_series_ids,
-            processed_dir=self.processed_dir,
+    @staticmethod
+    def from_config(cfg: TrainConfig) -> "SleepDataModule":
+        processed_dir = Path(cfg.dir.processed_dir)
+        event_df = pl.read_csv(processed_dir / "train_events.csv").drop_nulls()
+        train_event_df = event_df.filter(
+            pl.col("series_id").is_in(cfg.split.train_series_ids)
+        )
+        valid_event_df = event_df.filter(
+            pl.col("series_id").is_in(cfg.split.valid_series_ids)
+        )
+        train_features = load_features(
+            feature_names=cfg.features,
+            series_ids=cfg.split.train_series_ids,
+            processed_dir=processed_dir,
             phase="train",
+        )
+        valid_chunk_features = load_chunk_features(
+            duration=cfg.duration,
+            feature_names=cfg.features,
+            series_ids=cfg.split.valid_series_ids,
+            processed_dir=processed_dir,
+            phase="train",
+        )
+        return SleepDataModule(
+            cfg=cfg,
+            train_event_df=train_event_df,
+            valid_event_df=valid_event_df,
+            train_features=train_features,
+            valid_chunk_features=valid_chunk_features
         )
 
     def train_dataloader(self):
